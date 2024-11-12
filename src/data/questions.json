@@ -1,0 +1,134 @@
+[
+    {
+        "id": 1,
+        "category": "js",
+        "question": "如何实现深拷⻉和浅拷⻉？",
+        "answer": "浅拷⻉只复制对象的第⼀层属性，如果属性值是引⽤类型，浅拷⻉将复制引⽤⽽不是实际对象。深拷⻉复制对象的所有层，创建所有层次的副本。实现⽅法：•浅拷⻉可以使⽤Object.assign()或展开运算符...。constobj1={a:1,b:{c:2}};constshallowCopy={...obj1};•深拷⻉可以使⽤JSON.parse(JSON.stringify(object))，但这种⽅法不能复制函数、undefined、和循环引⽤。constdeepCopy=JSON.parse(JSON.stringify(obj1));更复杂的深拷⻉可以使⽤库如lodash的_.cloneDeep()⽅法来实现。",
+        "isFavorited": false
+    },
+    {
+        "id": 2,
+        "category": "js",
+        "question": "事件冒泡和事件捕获有什么区别？",
+        "answer": "事件冒泡和事件捕获是DOM事件传播的两个阶段•事件捕获：事件从DOM树的根节点开始，向下传递到⽬标元素的过程中触发•事件冒泡：事件从⽬标元素向上冒泡到DOM树的根节点的过程中触发。在实际应⽤中，你可以选择在哪个阶段监听事件：element.addEventListener('click',function(event){console.log('Clicked!');},false);//使⽤false作为第三个参数，表⽰在冒泡阶段触发如果将第三个参数设置为true，则监听器将在捕获阶段触发。",
+        "isFavorited": false
+    },
+    {
+        "id": 3,
+        "category": "css",
+        "question": "css有哪些选择器，标签选择器和子选择器的区别",
+        "answer": "1.基础选择器标签选择器类选择器ID选择器通用选择器2.组合选择器后代选择器（空格）子选择器（>）相邻兄弟选择器（+）通用兄弟选择器（~）3.伪类选择器:hover:first-child:last-child:nth-child(n):not(selector)4.伪元素选择器::before::after5.属性选择器[type=\"text\"]选中属性type值为text的元素。[name^=\"prefix\"]选中属性name以prefix开头的元素。[name$=\"suffix\"]选中属性name以suffix结尾的元素。[name*=\"part\"]选中属性name中包含part的元素。6.属性选择器（多个条件）input[type=\"text\"][name=\"username\"]区别总结●标签选择器：选中所有该标签的元素。●子选择器：选中指定元素的直接子元素。",
+        "isFavorited": false
+    }, 
+    {
+        "id": 4,
+        "category": "vue",
+        "question": "vue的diff算法了解吗，介绍一下",
+        "answer": "Vue的diff算法其实就是为了让Vue在数据更新时尽量减少对DOM的操作，从而提高性能。它的核心思路是这样的：1.虚拟DOM：Vue会先把HTML模板转成一个虚拟的DOM树，然后用这个虚拟的DOM来代替真实的DOM进行操作。2.数据变化时的更新：当数据发生变化，Vue会重新生成一个新的虚拟DOM，通过递归算法，Vue会逐个比较新旧虚拟节点的属性、子节点、文本内容等，找出两者之间的差异。3.最小化DOM操作：Vue只会对比差异部分，更新需要改动的DOM，避免不必要的全部重新渲染。4.优化点：○key：特别是列表渲染时，key会帮助Vue更聪明地复用DOM元素，避免重新创建。○静态内容缓存：不会每次都渲染不变的内容，减少性能消耗。简而言之，Vue通过这种方式，做到在页面更新时尽量只做最小的更新，保持渲染的高效。",
+        "isFavorited": false
+    },
+    {
+        "id": 5,
+        "category": "js",
+        "question": "JavaScript中的原型继承是如何⼯作的？",
+        "answer": "JavaScript是基于原型的语⾔，意味着对象可以从另⼀个对象继承属性。每个对象都有⼀个原型对象，它从中继承⽅法和属性。原型继承的核⼼是prototype属性。当你访问⼀个对象的属性或⽅法时，如果当前对象上不存在，解释器就会查找对象的原型链，直到找到该属性或⽅法或到达原型链的末端。例如，你可以为JavaScript的Array对象添加新的⽅法：Array.prototype.myCustomFeature=function(){//implementation};所有的数组都将⾃动获得这个新⽅法，因为它们从Array.prototype继承。Object.prototype是原型链的顶端，它没有原型，因此Object.prototype的[[Prototype]]是null。",
+        "isFavorited": false
+    },
+    {
+        "id": 6,
+        "category": "css",
+        "question": "CSS如何实现响应式设计的关键点是什么？",
+        "answer": "响应式⽹⻚设计（ResponsiveWebDesign,RWD）是⼀种⽹⻚设计⽅法论，⽬的是为了让设计在不同的设备（从桌⾯电脑显⽰器到移动电话或其他移动产品的屏幕）上浏览时都能⾃动适应屏幕⼤⼩，为⽤⼾提供⽅便的浏览⽅式。关键技术包括：•媒体查询（MediaQueries）：CSS技术，⽤于在不同的屏幕尺⼨和设备上应⽤不同的样式规则。•百分⽐宽度：使⽤百分⽐⽽不是固定像素宽度，使布局能够适应不同的屏幕宽度。•弹性图⽚：通常使⽤max-width:100%;使图⽚在容器内⾃适应⼤⼩。",
+        "isFavorited": false
+    },
+    {
+        "id": 7,
+        "category": "css",
+        "question": "描述Flexbox布局的⼯作原理及其常⽤属性",
+        "answer": "Flexbox（FlexibleBox）布局是⼀种CSS布局技术，旨在提供⼀种更有效的⽅式来布局、对⻬和分配容器中项⽬的空间，即使它们的⼤⼩未知或动态变化。Flexbox布局的容器可以展开项⽬以填充可⽤空间，或收缩它们以防⽌溢出。常⽤属性包括：•display:flex;：定义⼀个Flex容器。•flex-direction：决定主轴的⽅向（⾏或列）。•justify-content：在主轴上的对⻬⽅式（如flex-start,center,space-between）。•align-items：在交叉轴上的对⻬⽅式（如flex-start,center,stretch）。•flex-wrap：定义如何处理容器内不⾜以放下所有项⽬的情况。•flex-grow、flex-shrink和flex-basis：定义项⽬的扩展⽐例、收缩⽐例和基准⼤⼩。",
+        "isFavorited": false
+    },
+    {
+        "id": 8,
+        "category": "css",
+        "question": "CSS选择器的优先级是如何确定的？",
+        "answer": "CSS选择器的优先级是⼀个基本但⾮常关键的概念，它决定了当多条CSS规则冲突时，哪些规则将被应⽤到HTML元素上。这⼀机制保证了样式表的可预测性和⼀致性。理解CSS选择器优先级，有助于开发者编写更有效和可维护的CSS代码。以下是对CSS选择器优先级的全⾯解析：1.优先级的组成CSS选择器的优先级由三个主要部分组成，通常表⽰为⼀个四元组（a,b,c,d）：•a（内联样式）：如果样式是在HTML元素的style属性中定义的，其优先级最⾼。权重：1000•b（ID选择器）：计算选择器中ID选择器的数量。权重：100•c（类选择器、伪类选择器、属性选择器）：计算选择器中类选择器、属性选择器以及伪类选择器的总数。权重：10•d（元素选择器和伪元素选择器）：计算选择器中元素选择器和伪元素选择器的数量。权重：1•e（通配符选择器（*）和继承样式：通配符选择器（如*{}）优先级最底，继承的样式也有最低优先级。权重：02.优先级计算规则优先级的计算遵循以下规则：•⽐较规则从左到右进⾏，先⽐较a，如果a相同，则⽐较b，依此类推。•如果某⼀级别相同，则继续向右⽐较下⼀级别。•较⾼优先级的CSS规则将覆盖其他较低优先级的规则。3.!important规则!important规则可以覆盖上述所有的优先级计算，使得带有!important的样式声明具有最⾼优先级。但是，过度使⽤!important可能导致样式难以维护，建议仅在必要时使⽤。4.继承和优先级⼤多数CSS属性不会从⽗元素继承到⼦元素，但某些属性如color和font会⾃动继承。继承的属性不受优先级规则影响，除⾮在⼦元素上直接应⽤了相应的CSS规则。5.最佳实践为了有效地利⽤CSS选择器的优先级，开发者应遵循以下最佳实践：•尽量使⽤类选择器，避免过度依赖ID选择器，以保持样式的灵活性和可重⽤性。•结构化CSS规则，使其易于理解和维护，避免过于复杂的选择器链。•使⽤语义化的HTML和CSS，提⾼代码的可读性和可维护性。通过深⼊理解CSS选择器的优先级，前端开发者可以更精确地控制样式的应⽤，避免不必要的样式冲突和性能问题，同时提升⽹⻚的整体表现和⽤⼾体验。",
+        "isFavorited": false
+    },
+    {
+        "id": 9,
+        "category": "html",
+        "question": "解释HTML5中的Canvas和SVG的区别",
+        "answer": "Canvas和SVG都是HTML5中⽤于图形的技术，但它们适⽤于不同的⽤途和场景：•Canvas:◦是⼀个位图画布，其通过JavaScript动态渲染像素点。◦适合进⾏图像密集型的游戏或应⽤，如在线绘图、游戏、视频处理等。◦动态图形时性能更佳，但放⼤会失真。◦对象不是独⽴的DOM节点，操作单个对象需要重绘整个画布。•SVG（ScalableVectorGraphics）:◦是基于XML的⽮量图形技术。◦适合需要频繁缩放的应⽤，如地图、图表等。◦每个图形元素都是DOM节点，可以绑定事件和样式。◦通常性能较Canvas差，特别是在图形⾮常复杂时。总结：选择Canvas还是SVG取决于你的具体需求，Canvas适合像素操作和图像密集的动态渲染，⽽SVG更适合⾼质量的⽮量图形和复杂的交互效果",
+        "isFavorited": false
+    },
+    {
+        "id": 10,
+        "category": "net",
+        "question": "了解过HTTP和HTTPS吗？讲讲为什么后者更好",
+        "answer": "HTTPS⽐HTTP更安全主要是因为HTTPS使⽤了加密技术来保护数据的传输过程，⽽HTTP并没有这种保护机制。具体来说，HTTPS的安全性体现在以下⼏个⽅⾯：1.数据加密传输：HTTPS使⽤SSL/TLS协议对数据进⾏加密，使得传输过程中的数据不易被窃听和窃取。这样可以保护⽤⼾的隐私信息，如登录凭证、信⽤卡信息等。2.数据完整性验证：HTTPS使⽤加密哈希算法来验证数据的完整性，⼀旦数据在传输过程中被篡改，接收⽅就会发现数据的完整性校验失败，从⽽拒绝接收被篡改的数据。3.⾝份认证：HTTPS使⽤数字证书来验证⽹站的⾝份，确保⽤⼾连接的是真实的⽹站⽽不是恶意攻击者的伪装⽹站。这可以有效防⽌中间⼈攻击。4.搜索引擎优化：搜索引擎如Google已经将⽹站是否使⽤HTTPS作为搜索排名的⼀个因素，使⽤HTTPS可以提⾼⽹站在搜索结果中的排名",
+        "isFavorited": false
+    },
+    {
+        "id": 11,
+        "category": "net",
+        "question": "前端如何处理跨域",
+        "answer": "1.CORS（跨源资源共享）●概念：CORS是一种机制，它使用额外的HTTP头部来告诉浏览器，允许来自不同源的请求。●实现：服务器需要在响应头中添加Access-Control-Allow-Origin及其他相关的CORS头部。Access-Control-Allow-Origin:http://example.comAccess-Control-Allow-Methods:GET,POST,OPTIONSAccess-Control-Allow-Headers:Content-Type2.JSONP（JSONwithPadding）●概念：JSONP是一种旧的跨域请求方式，利用<script>标签可以跨域加载JavaScript资源的特性。●实现：服务器返回一个JavaScript函数调用，并将数据作为参数传递。//客户端请求constscript=document.createElement('script');script.src='http://api.example.com/data?callback=myCallback';document.body.appendChild(script);//服务器返回myCallback({key:'value'});3.代理服务器●概念：通过设置一个代理服务器，使前端请求转发到目标服务器。这样，浏览器只与代理服务器通信，避免跨域。●实现：在开发环境中，通常使用开发工具（如Webpack、Vite）配置代理。//Vite配置示例exportdefault{server:{proxy:{'/api':{target:'http://api.example.com',changeOrigin:true,},},},};4.使用iframe●概念：通过使用iframe加载其他域的页面，与其进行通信。●实现：通过postMessageAPI实现跨域通信。//父窗口constiframe=document.createElement('iframe');iframe.src='http://other-domain.com';document.body.appendChild(iframe);iframe.contentWindow.postMessage('Hello','http://other-domain.com');//子窗口window.addEventListener('message',(event)=>{if(event.origin==='http://your-domain.com'){console.log(event.data);}});5.通过Nginx配置反向代理●概念：使用Nginx等服务器作为反向代理，转发请求到后端API。●实现：在Nginx配置文件中设置相应的转发规则。location/api{proxy_passhttp://api.example.com;proxy_set_headerHost$host;proxy_set_headerX-Real-IP$remote_addr;}总结●选择适合的跨域解决方案取决于具体需求和场景。CORS是最常用的现代方法，JSONP适用于较旧的接口，代理服务器适合开发环境，而iframe和反向代理则适用于特定场景。●确保服务器的配置是正确的，以避免跨域请求的问题。",
+        "isFavorited": false
+    },
+    {
+        "id": 12,
+        "category": "vue",
+        "question": "computed 和 watch 的区别？watch 和 watcheffect 的区别？",
+        "answer": "在Vue3中，computed和watch的使用场景不同。computed是用来计算基于已有数据的新值的，它的结果会被缓存，只有在相关数据变化时才会重新计算。比如，如果我有一个计数器count，我可以用computed来创建一个doubledCount，每次count变化时，doubledCount会自动更新。另一方面，watch用于观察某个特定的数据变化，并在变化时执行一些逻辑。比如，当count发生变化时，我可能想打印出变化的值，或者发起一个API请求。这就是watch的主要作用。关于watch和watchEffect的区别，watch需要明确指定要观察的数据，而watchEffect会立即执行一个函数，并自动追踪这个函数中使用的所有响应式数据。当这些数据发生变化时，watchEffect会自动重新执行。这使得watchEffect在某些情况下更方便，尤其是当你想要避免手动指定依赖时。",
+        "isFavorited": false
+    },{
+        "id": 13,
+        "category": "vue",
+        "question": "v-if 和 v-show 的区别？什么场景使⽤ v-if？什么场景使⽤ v-show？",
+        "answer": "v-if是动态的向DOM树内添加或者删除DOM元素，初始为假的时候不会⽣成对应的VNODE；v-show是通过设置DOM元素的display样式属性控制显隐，DOM元素⼀开始就会被渲染。这导致了v-if有更⾼的切换消耗；v-show有更⾼的初始渲染消耗。故⽽v-if适合不⼤可能改变的场景，⽐如根据⽤⼾权限展⽰的元素，⽤⼾没有权限就没有必要渲染对应的DOM了；v-show适合频繁切换的场景，⽐如折叠⾯板",
+        "isFavorited": false
+    },{
+        "id": 14,
+        "category": "vue",
+        "question": "vuex的⼯作流程？",
+        "answer": "Vuex实现了⼀个单向数据流，在全局拥有⼀个State存放数据，当组件要更改State中的数据时，必须通过Mutation提交修改信息，Mutation同时提供了订阅者模式供外部插件调⽤获取State数据的更新。⽽当所有异步操作(常⻅于调⽤后端接⼝异步获取更新数据)或批量的同步操作需要⾛Action，但Action也是⽆法直接修改State的，还是需要通过Mutation来修改State的数据。最后，根据State的变化，渲染到视图上。订阅者模式●Vuex内部实现了一个订阅者模式，允许组件在State变化时自动得到通知。这样，当数据更新时，视图也会相应更新。数据流总结1.用户触发：○用户在界面上进行操作，比如点击按钮。2.触发Action：○这个操作触发一个Action（可能是异步的）。3.调用Mutation：○Action完成后，调用相应的Mutation来修改State。4.更新视图：○State变化后，所有依赖这个State的组件会自动更新。",
+        "isFavorited": false
+    },{
+        "id": 15,
+        "category": "node",
+        "question": "进程和线程的区别",
+        "answer": "进程和线程是操作系统中的两个基本概念，它们用于实现并发执行，但有许多不同的特性和用途。下面是它们之间的主要区别：1.定义●进程（Process）：○进程是一个正在执行的程序实例，它包含了程序代码、数据以及系统资源（如文件句柄和内存）。每个进程都有自己的地址空间，数据堆栈，以及其他辅助数据，用于跟踪进程的执行。●线程（Thread）：○线程是进程内的一个执行单元，它是进程中的实际执行路径。线程是操作系统调度的最小单位，同一进程中的线程共享进程的资源（如内存和文件句柄），并能够并发执行。2.资源分配●进程：○每个进程都有独立的地址空间。进程之间的内存是隔离的，进程间通信需要使用IPC（进程间通信）机制（如管道、消息队列、共享内存等）。●线程：○同一进程中的线程共享进程的地址空间和资源，因此线程间的通信比进程间通信更为高效，但线程间的共享资源也可能导致同步问题（如数据竞争）。3.创建和销毁●进程：○创建和销毁进程的开销相对较大，因为需要分配和管理独立的内存空间和资源。●线程：○创建和销毁线程的开销较小，因为线程共享进程的资源。线程创建速度快，资源消耗少。4.调度和切换●进程：○操作系统调度进程时需要进行进程上下文切换，这涉及到保存和恢复进程的状态（如寄存器值、程序计数器等），这个过程比较耗时。●线程：○线程调度的上下文切换比进程切换快，因为线程之间共享进程的内存空间，切换时只需保存和恢复线程状态。5.稳定性和隔离●进程：○进程之间的隔离性更强，一个进程崩溃不会直接影响其他进程的运行。进程的崩溃通常只会影响该进程本身。●线程：○线程间的隔离性较弱，如果一个线程出现错误（如访问越界或发生异常），可能会导致整个进程崩溃，因为所有线程共享同一进程的内存。6.适用场景●进程：○适用于需要强隔离和独立性的任务，如不同的应用程序或后台服务。●线程：○适用于需要并发执行且资源共享的任务，如Web服务器处理多个请求或多线程的计算任务。总结：●进程是具有独立地址空间的执行实例，资源开销大，适用于需要隔离和独立性的任务。●线程是进程中的执行单元，共享进程资源，创建和销毁开销小，适用于并发执行的任务。理解这两个概念及其区别对系统设计和编程是非常重要的，尤其是在涉及多任务和并发处理时。",
+        "isFavorited": false
+    },{
+        "id": 16,
+        "category": "applet",
+        "question": "⼩程序性能优化做了哪些事情",
+        "answer": "先讲了⼀下⼩程序的架构和渲染原理，阐述⼩程序性能的影响因素，之后则介绍对应的性能优化⼿段有哪些。主要包含以下：1.使⽤⼩程序原⽣语法⽽不是类React或者Vue框架2.减少setData次数，同时优化setData的数据量⼤⼩3.请求预加载，重写路由⽅法，将下⼀个⻚⾯的请求提前到路由⽅法⾥调⽤4.减少wxml的嵌套深度和节点数量，同时对wxss相同样式做合并处理5.⼀些常规的优化⼿段：⻣架屏、⾸屏数据缓存、分包、⼦包预加载、⾸屏接⼝合并、懒加载等⽅式",
+        "isFavorited": false
+    },{
+        "id": 17,
+        "category": "arithmetic",
+        "question": "【代码题】⼤数相加  输⼊：num1 = '1234567890', num2 = '987654321'  输出：'2222222211'",
+        "answer": "问题描述给定两个表示大数的字符串num1和num2，请实现一个函数，将这两个大数相加，并返回它们的和，结果也以字符串形式表示。算法思路1.从后向前遍历两个字符串，逐位相加。2.处理进位：如果某一位的和大于10，需要记录进位。3.如果遍历完一个字符串后，另一个字符串还有剩余，继续加上这个字符串的剩余部分。4.如果最后还有进位，记得将其添加到结果中。代码实现以下是使用JavaScript实现的代码：javascript复制代码functionaddLargeNumbers(num1,num2){letresult='';letcarry=0;leti=num1.length-1;letj=num2.length-1;while(i>=0||j>=0||carry>0){constdigit1=i>=0?Number(num1[i]):0;constdigit2=j>=0?Number(num2[j]):0;constsum=digit1+digit2+carry;result=(sum%10)+result;//取当前位carry=Math.floor(sum/10);//更新进位i--;j--;}returnresult;}//示例使用constnum1='1234567890';constnum2='987654321';constoutput=addLargeNumbers(num1,num2);console.log(output);//输出:'2222222211'复杂度分析●时间复杂度：O(max(m,n))，其中m和n分别是num1和num2的长度。我们需要遍历两个字符串的每一位。●空间复杂度：O(max(m,n))，用于存储结果字符串。总结通过从后向前遍历字符串并处理进位，我们可以高效地实现大数相加的功能，确保即使处理非常大的数字也能正常工作。",
+        "isFavorited": false
+    },{
+        "id": 18,
+        "category": "react",
+        "question": "‌‌Redux中间件的使用",
+        "answer": "redux-thunk：用于异步操作。redux-logger：用于日志记录。这些中间件需要通过‌:ml-search[applyMiddlewares]{href=\"/s?wd=applyMiddlewares&usm=5&ie=utf-8&rsv_pq=ce1b490c000014b9&oq=React%E9%9D%A2%E8%AF%95%E9%A2%98&rsv_t=3374OLL3sTzA7jDheVRrZH%2BKzR7obvOvmfB1hZlz3JyGhC4cSImSDCBMvNA&sa=re_dqa_generate\"}进行注册，将所有中间件组成一个数组，依次执行，然后作为第二个参数传入到createStore中。",
+        "isFavorited": false
+    },{
+        "id": 19,
+        "category": "react",
+        "question": "‌‌State和‌Props的区别",
+        "answer": "‌State‌：组件内部的数据状态，用于控制组件的显示形态。一般在constructor中初始化，通过setState来修改状态，从而触发组件的重新渲染。‌Props‌：从父组件传递到子组件的数据，用于子组件的显示。在组件内部不可修改，只能通过外部传递新的props来重新渲染子组件。",
+        "isFavorited": false
+    },{
+        "id": 20,
+        "category": "node",
+        "question": "说说 Node. js 有哪些全局对象？",
+        "answer": "在浏览器JavaScript中，通常window是全局对象，而Nodejs中的全局对象是global模块级别的全局对象这些全局对象是模块中的变量，只是每个模块都有，看起来就像全局变量，像在命令交互中是不可以使用，包括：__dirname__filenameexportsmodulerequire_dirname：获取当前文件所在的路径，不包括后面的文件名_filename:获取当前文件所在的路径和文件名称，包括后面的文件名称exports:module.exports用于指定一个模块所导出的内容，即可以通过require()访问的内容module:对当前模块的引用，通过module.exports用于指定一个模块所导出的内容，即可以通过require()访问的内容require用于引入模块、JSON、或本地文件。可以从node_modules引入模块。可以使用相对路径引入本地模块或JSON文件，路径会根据__dirname定义的目录名或当前工作目录进行处理",
+        "isFavorited": false
+    }
+]
