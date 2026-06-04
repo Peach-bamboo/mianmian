@@ -1,10 +1,7 @@
 <template>
     <view class="home-page">
-        <view v-if="activeTab == 0">
-            <!-- 顶部的每日一题模块 -->
-            <DailyQuestion />
-            <!-- 底部的前端模块区域 -->
-            <FrontendModules />
+        <view v-if="activeTab == 0" class="home-cosmos-pane">
+            <KnowledgeCosmos @switch-profile="navigateToGrowth" />
         </view>
         <view v-else-if="activeTab == 1" class="profile">
             <!-- 头像和昵称区域 -->
@@ -22,8 +19,7 @@
             </view>
         </view>
 
-
-        <Tabbar :activeTab="activeTab" @update:activeTab="updateActiveTab" />
+        <Tabbar v-if="activeTab !== 0" :activeTab="activeTab" @update:activeTab="updateActiveTab" />
     </view>
 </template>
 <script setup>
@@ -32,9 +28,9 @@ import { ref } from 'vue';
 import Taro from '@tarojs/taro';
 import { Star } from '@nutui/icons-vue-taro'
 import Tabbar from '../../components/Tabbar.vue';
-import DailyQuestion from '../../components/DailyQuestion.vue';
-import FrontendModules from '../../components/FrontendModules.vue';
+import KnowledgeCosmos from '../../components/KnowledgeCosmos.vue';
 import questionsData from '../../data/questions.json';
+import { syncCloudQuestionStates } from '../../services/questionState';
 
 const activeTab = ref(0);
 function updateActiveTab(newValue) {
@@ -70,6 +66,10 @@ const navigateToFavorites = () => {
     Taro.navigateTo({ url: '/pages/favorites/index' });
 };
 
+const navigateToGrowth = () => {
+    Taro.navigateTo({ url: '/pages/profile/index' });
+};
+
 const QUESTIONS_VERSION = "1.2"; // 更新时修改版本号
 
 // 初始化数据存储
@@ -97,15 +97,29 @@ function initializeQuestionsData() {
     }
 }
 
+async function initializeCloudQuestionStates() {
+    try {
+        await syncCloudQuestionStates()
+    } catch (error) {
+        console.log('云端题目状态同步失败', error)
+    }
+}
+
 // 在应用入口文件调用
 initializeQuestionsData()
+initializeCloudQuestionStates()
 
 </script>
 <style lang="scss">
 .home-page {
     height: 100vh;
-    padding: 20px;
-    background-color: $secondary-my-color;
+    background-color: #050711;
+    overflow: hidden;
+}
+
+.home-cosmos-pane {
+    height: 100vh;
+    overflow: hidden;
 }
 
 .profile {

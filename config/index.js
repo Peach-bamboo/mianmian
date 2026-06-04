@@ -41,6 +41,12 @@ const config = {
   },
   mini: {
     webpackChain(chain) {
+      chain.merge({
+        watchOptions: {
+          ignored: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
+          poll: 1000
+        }
+      })
       chain.plugin('unplugin-vue-components').use(Components({
         resolvers: [
           NutUIResolver({

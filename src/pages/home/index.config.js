@@ -1,5 +1,6 @@
 export default definePageConfig({
-  navigationBarTitleText: '前端面面',
+  navigationStyle: 'custom',
+  disableScroll: true,
   // navigationBarBackgroundColor: '#ffffff', // 导航栏背景色
   // enablePullDownRefresh: true, // 启用下拉刷新
   // onPullDownRefresh: function () {
