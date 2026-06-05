@@ -7,12 +7,10 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    CosmosHeadbar: typeof import('./src/components/CosmosHeadbar.vue')['default']
     DailyQuestion: typeof import('./src/components/DailyQuestion.vue')['default']
     FrontendModules: typeof import('./src/components/FrontendModules.vue')['default']
-    NutCol: typeof import('@nutui/nutui-taro')['Col']
-    NutRow: typeof import('@nutui/nutui-taro')['Row']
-    NutTabbar: typeof import('@nutui/nutui-taro')['Tabbar']
-    NutTabbarItem: typeof import('@nutui/nutui-taro')['TabbarItem']
+    KnowledgeCosmos: typeof import('./src/components/KnowledgeCosmos.vue')['default']
     QuestionDetail: typeof import('./src/components/QuestionDetail.vue')['default']
     Tabbar: typeof import('./src/components/Tabbar.vue')['default']
   }

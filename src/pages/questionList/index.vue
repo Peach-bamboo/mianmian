@@ -1,187 +1,376 @@
 <template>
-    <!-- 题目列表页-->
-    <view class="module-page">
-        <!-- 模块标题 -->
-        <view class="module-title">{{ title }} 题目</view>
+  <view class="question-list-page">
+    <CosmosHeadbar
+      :title="pageTitle"
+      :subtitle="pageSubtitle"
+      :meta="`${filteredQuestions.length} 题`"
+      :show-back="true"
+      :top-offset="16"
+      @back="goBack"
+    />
 
-        <!-- 题目列表 -->
-        <view class="question-list">
-            <view v-for="(question, index) in questions" :key="index" class="question-item"
-                @tap="goToDetailPage(question.id)">
-                <view class="question-index">第{{ index + 1 }}题</view>
-                <view class="question-description">{{ question.question }}</view>
-            </view>
+    <view class="list-content">
+      <view class="search-box">
+        <text class="search-icon">⌕</text>
+        <input
+          v-model="searchText"
+          class="search-input"
+          placeholder="搜索题干关键词"
+          placeholder-class="search-placeholder"
+        />
+      </view>
+
+      <scroll-view class="filter-scroll" scroll-x :show-scrollbar="false">
+        <view class="filter-row">
+          <view
+            v-for="item in filters"
+            :key="item.key"
+            class="filter-chip"
+            :class="{ active: activeFilter === item.key }"
+            @tap="activeFilter = item.key"
+          >
+            <text>{{ item.name }}</text>
+          </view>
         </view>
+      </scroll-view>
+
+      <view class="summary-row">
+        <text>{{ filteredQuestions.length }} 道可练习</text>
+        <text class="summary-meta">总计 {{ sourceQuestions.length }} 题</text>
+      </view>
+
+      <view v-if="filteredQuestions.length" class="question-list">
+        <view
+          v-for="(question, index) in filteredQuestions"
+          :key="question.id"
+          class="question-card"
+          @tap="goToDetailPage(question.id, index)"
+        >
+          <view class="card-top">
+            <text class="question-index">第 {{ index + 1 }} 题</text>
+            <view class="question-states">
+              <text v-if="question.isFavorited" class="state-fav">已收藏</text>
+              <text
+                v-if="question.mastery"
+                class="state-mastery"
+                :class="{ mastered: question.mastery === 'mastered' }"
+              >
+                {{ question.mastery === 'mastered' ? '已掌握' : '待复习' }}
+              </text>
+            </view>
+          </view>
+          <text class="question-text">{{ question.question }}</text>
+          <view class="card-bottom">
+            <text class="question-id">ID {{ question.id }}</text>
+            <text class="arrow">›</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-else class="empty-state">
+        <text class="empty-title">没有匹配到题目</text>
+        <text class="empty-desc">可以切换筛选或清空搜索后再试试</text>
+      </view>
     </view>
+  </view>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from '@tarojs/taro'
-import Taro from '@tarojs/taro'
+import { computed, ref } from 'vue'
+import Taro, { useRouter } from '@tarojs/taro'
+import CosmosHeadbar from '../../components/CosmosHeadbar.vue'
+import questionsData from '../../data/questions.json'
 
-// 路由跳转
 const router = useRouter()
-const key = ref(router.params.key);
-const title = ref();
+const categoryKey = ref(router.params.key || '')
+const searchText = ref('')
+const activeFilter = ref('all')
 
-// 加载题目数据
-const loadQuestions = () => {
-  try {
-    const data = Taro.getStorageSync('questions')
-    return data || []
-  } catch (error) {
-    console.error("加载题目数据出错:", error)
-    return []
-  }
+const CATEGORY_TITLE_MAP = {
+  html: 'HTML 题目',
+  css: 'CSS 题目',
+  js: 'JavaScript 题目',
+  react: 'React 题目',
+  vue: 'Vue 题目',
+  applet: '小程序题目',
+  node: 'Node 题目',
+  net: '网络题目',
+  arithmetic: '算法题目',
+  random: '随机练习'
 }
-console.log("loadQuestions",loadQuestions());
-const questions = ref();
 
-// 定义随机练习题的数量
-const RANDOM_QUESTIONS_COUNT = 10; // 可以根据需求调整
+const filters = [
+  { key: 'all', name: '全部' },
+  { key: 'new', name: '未标记' },
+  { key: 'mastered', name: '已掌握' },
+  { key: 'retry', name: '待复习' },
+  { key: 'fav', name: '已收藏' }
+]
 
-const getRandomQuestions = (allQuestions) => {
-    const selectedQuestions = [];
-    const questionIds = new Set();
+function loadQuestions() {
+  const data = Taro.getStorageSync('questions')
+  return Array.isArray(data) && data.length ? data : questionsData
+}
 
-    while (selectedQuestions.length < RANDOM_QUESTIONS_COUNT && questionIds.size < allQuestions.length) {
-        const randomIndex = Math.floor(Math.random() * allQuestions.length);
-        const randomQuestion = allQuestions[randomIndex];
-
-        if (!questionIds.has(randomQuestion.id)) {
-            selectedQuestions.push(randomQuestion);
-            questionIds.add(randomQuestion.id);
-        }
+function getRandomQuestions(allQuestions, count = 10) {
+  const selected = []
+  const used = new Set()
+  while (selected.length < count && used.size < allQuestions.length) {
+    const randomIndex = Math.floor(Math.random() * allQuestions.length)
+    const item = allQuestions[randomIndex]
+    if (!used.has(item.id)) {
+      used.add(item.id)
+      selected.push(item)
     }
-    return selectedQuestions;
-}
-// 在进入随机练习模块时调用
-function initializeRandomPractice() {
-    const allQuestions = loadQuestions();
-    const randomQuestions = getRandomQuestions(allQuestions);
-    // Taro.setStorageSync('randomPracticeQuestions', randomQuestions);
-    return randomQuestions;
+  }
+  return selected
 }
 
-if(key.value === 'random'){
-    questions.value = initializeRandomPractice()
-}else{
-    questions.value = loadQuestions().filter(question => question.category === key.value);
-}
+const allQuestions = ref(loadQuestions())
 
-
-console.log("questions",questions);
-
-// 根据 key 值设置标题
-switch (key.value) {
-    case 'html':
-        title.value = 'HTML'
-        break;
-    case 'css':
-        title.value = 'CSS'
-        break;
-    case 'js':
-        title.value = 'JavaScript'
-        break;
-    case 'react':
-        title.value = 'React'
-        break;
-    case 'vue':
-        title.value = 'Vue'
-        break;
-    case 'applet':
-        title.value = '小程序'
-        break;
-    case 'node':
-        title.value = 'Node'
-        break;
-    case 'net':
-        title.value = '网络'
-        break;
-    case 'arithmetic':
-        title.value = '算法'
-        break;
-    case 'random':
-        title.value = '随机练习'
-        break;
-    default:
-        break;
-}
-
-
-// 设置导航栏标题
-Taro.setNavigationBarTitle({
-    title: title.value
+const sourceQuestions = computed(() => {
+  if (categoryKey.value === 'random') {
+    return getRandomQuestions(allQuestions.value, 10)
+  }
+  return allQuestions.value.filter(question => question.category === categoryKey.value)
 })
-console.log("key:", key.value)
 
-const goToDetailPage = (id) => {
-    // 跳转到题目详情页，传递题目 ID
-    Taro.navigateTo({ url: `/pages/normalQuestionDetail/index?id=${id}` })
+const filteredQuestions = computed(() => {
+  const keyword = searchText.value.trim().toLowerCase()
+  return sourceQuestions.value.filter((question) => {
+    const byKeyword = !keyword || question.question.toLowerCase().includes(keyword)
+    let byState = true
+    if (activeFilter.value === 'new') byState = !question.mastery
+    if (activeFilter.value === 'mastered') byState = question.mastery === 'mastered'
+    if (activeFilter.value === 'retry') byState = question.mastery === 'retry'
+    if (activeFilter.value === 'fav') byState = !!question.isFavorited
+    return byKeyword && byState
+  })
+})
+
+const pageTitle = computed(() => CATEGORY_TITLE_MAP[categoryKey.value] || '题目列表')
+
+const pageSubtitle = computed(() => {
+  if (categoryKey.value === 'random') return '从全题库随机抽取 10 道题'
+  return '按当前星系聚焦练习'
+})
+
+function goToDetailPage(id, index) {
+  const ids = filteredQuestions.value.map(item => item.id).join(',')
+  Taro.navigateTo({
+    url: `/pages/normalQuestionDetail/index?id=${id}&key=${categoryKey.value || ''}&index=${index}&ids=${ids}`
+  })
+}
+
+function goBack() {
+  Taro.navigateBack({ delta: 1 })
 }
 </script>
 
 <style lang="scss">
-.module-page {
-    padding: 20px;
-    min-height: 100vh;
-    background-color: $secondary-my-color;
+@function fig($px) {
+  @return ($px * 750 / 390) * 1px;
 }
 
-.module-title {
-    font-size: 34px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    color: $primary-my-color-end;
+.question-list-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #101a35 0%, #070b18 100%);
+  color: #f5f8ff;
+}
+
+.list-content {
+  padding: 0 fig(23) fig(40);
+  box-sizing: border-box;
+}
+
+.search-box {
+  position: relative;
+  height: fig(42);
+  margin-top: fig(10);
+  border-radius: fig(14);
+  background: #101a2f;
+}
+
+.search-icon {
+  position: absolute;
+  left: fig(18);
+  top: fig(8);
+  color: #7e90b6;
+  font-size: fig(17);
+  line-height: fig(28);
+}
+
+.search-input {
+  height: fig(42);
+  padding: 0 fig(18) 0 fig(54);
+  color: #f5f8ff;
+  font-size: fig(13);
+  box-sizing: border-box;
+}
+
+.search-placeholder {
+  color: #67799f;
+}
+
+.filter-scroll {
+  margin-top: fig(14);
+  white-space: nowrap;
+}
+
+.filter-row {
+  display: inline-flex;
+}
+
+.filter-chip {
+  height: fig(34);
+  margin-right: fig(8);
+  padding: 0 fig(16);
+  border-radius: fig(17);
+  background: #10182c;
+  text-align: center;
+}
+
+.filter-chip text {
+  color: #8092b7;
+  font-size: fig(12);
+  line-height: fig(34);
+}
+
+.filter-chip.active {
+  background: #22438c;
+}
+
+.filter-chip.active text {
+  color: #73e9ff;
+  font-weight: 700;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: fig(14);
+}
+
+.summary-row text {
+  color: #7e90b6;
+  font-size: fig(12);
+  line-height: fig(18);
+}
+
+.summary-meta {
+  color: #41e6ff !important;
 }
 
 .question-list {
-    display: flex;
-    flex-direction: column;
+  margin-top: fig(8);
 }
 
-.question-item {
-    height: 160px;
-    margin-bottom: 20px;
-    // padding: 15px;
-    border-radius: 20px;
-    background-color: #f9f9f9;
-    box-shadow: 0px 0px 20px 4px rgba(0, 0, 0, 0.1);
+.question-card {
+  margin-bottom: fig(10);
+  padding: fig(12);
+  border-radius: fig(14);
+  border: 1px solid rgba(32, 55, 98, 0.8);
+  background: #101a2f;
+  box-shadow: 0 fig(6) fig(18) rgba(0, 0, 0, 0.2);
 }
 
-.question-item:hover {
-    background-color: #f0f0f0;
+.card-top,
+.question-states,
+.card-bottom {
+  display: flex;
+  align-items: center;
+}
+
+.card-top,
+.card-bottom {
+  justify-content: space-between;
+}
+
+.question-index,
+.state-fav,
+.state-mastery,
+.question-text,
+.question-id,
+.arrow,
+.empty-title,
+.empty-desc {
+  display: block;
 }
 
 .question-index {
-    width: 100px;
-    height: 40px;
-    font-size: 30px;
-    color: #fff;
-    background: $primary-my-color-end;
-    border-top-left-radius: 20px;
-    border-bottom-right-radius: 20px;
-    text-align: center;
-    line-height: 40px;
+  color: #41e6ff;
+  font-size: fig(11);
+  font-weight: 700;
+  line-height: fig(16);
 }
 
-.question-description {
-    font-size: 32px;
-    font-weight: bold;
-    color: #3f3e3e;
-    margin-top: 20px;
-    // background: pink;
-    line-height: 36px;
-    padding: 0 20px;
+.question-states text {
+  margin-left: fig(6);
+  padding: 0 fig(8);
+  border-radius: fig(10);
+  font-size: fig(10);
+  line-height: fig(18);
+}
 
-    overflow: hidden;
-    display: -webkit-box;
-    /* 设置为盒布局 */
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    /* 限制显示两行 */
-    line-clamp: 2;
-    white-space: normal;
+.state-fav {
+  color: #ffd972;
+  background: rgba(107, 78, 17, 0.45);
+}
+
+.state-mastery {
+  color: #a7b8da;
+  background: rgba(41, 57, 90, 0.6);
+}
+
+.state-mastery.mastered {
+  color: #3ce4a2;
+  background: rgba(17, 88, 68, 0.45);
+}
+
+.question-text {
+  margin-top: fig(8);
+  color: #e7efff;
+  font-size: fig(14);
+  font-weight: 600;
+  line-height: fig(21);
+}
+
+.card-bottom {
+  margin-top: fig(10);
+}
+
+.question-id {
+  color: #8ea1ca;
+  font-size: fig(11);
+  line-height: fig(16);
+}
+
+.arrow {
+  color: #6379a5;
+  font-size: fig(17);
+  line-height: fig(18);
+}
+
+.empty-state {
+  margin-top: fig(20);
+  padding: fig(20) fig(16);
+  border-radius: fig(16);
+  border: 1px solid rgba(33, 58, 105, 0.72);
+  background: rgba(16, 26, 47, 0.68);
+  text-align: center;
+}
+
+.empty-title {
+  color: #dce8ff;
+  font-size: fig(15);
+  font-weight: 700;
+  line-height: fig(22);
+}
+
+.empty-desc {
+  margin-top: fig(8);
+  color: #8ea1ca;
+  font-size: fig(12);
+  line-height: fig(18);
 }
 </style>
