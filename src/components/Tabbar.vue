@@ -79,7 +79,7 @@ function handleClick(item) {
   position: fixed;
   left: fig(15);
   right: fig(15);
-  bottom: calc(29rpx + env(safe-area-inset-bottom));
+  bottom: 29rpx;
   z-index: 1000;
   display: flex;
   align-items: center;

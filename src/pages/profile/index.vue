@@ -600,20 +600,14 @@ async function drawGuestCore() {
       const cy = height / 2
       const radius = Math.min(width, height) * 0.38
 
-      const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.35)
-      halo.addColorStop(0, 'rgba(107, 255, 224, 0.72)')
-      halo.addColorStop(0.38, 'rgba(31, 205, 217, 0.22)')
+      const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.18)
+      halo.addColorStop(0, 'rgba(107, 255, 224, 0.62)')
+      halo.addColorStop(0.42, 'rgba(31, 205, 217, 0.16)')
       halo.addColorStop(1, 'rgba(25, 146, 255, 0)')
       ctx.fillStyle = halo
       ctx.beginPath()
-      ctx.arc(cx, cy, radius * 1.35, 0, Math.PI * 2)
+      ctx.arc(cx, cy, radius * 1.18, 0, Math.PI * 2)
       ctx.fill()
-
-      ctx.strokeStyle = 'rgba(42, 205, 255, 0.92)'
-      ctx.lineWidth = 1.5
-      ctx.beginPath()
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2)
-      ctx.stroke()
 
       const shell = ctx.createRadialGradient(cx - 18, cy - 20, 2, cx, cy, radius)
       shell.addColorStop(0, 'rgba(183, 255, 240, 0.96)')

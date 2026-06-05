@@ -16,7 +16,6 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import Taro from '@tarojs/taro'
 import { createScopedThreejs } from 'threejs-miniprogram'
-import { getDailyQuestionByCloud } from '../services/cloud'
 
 const emit = defineEmits(['switch-profile'])
 
@@ -67,6 +66,8 @@ let planetTargets = []
 let orbitTargets = []
 let hitZones = []
 let overlayMaterials = []
+let planetMaterials = []
+let backgroundMaterials = []
 
 const moduleStats = computed(() => {
   return modules.map((item) => {
@@ -79,49 +80,8 @@ const focusedModule = computed(() => {
   return moduleStats.value.find(item => item.key === focusedKey.value) || moduleStats.value[0]
 })
 
-const dailyQuestion = computed(() => {
-  const cached = getDailyQuestion()
-  return cached || questions.value[0]
-})
-
 function navigateTo(url) {
   Taro.navigateTo({ url })
-}
-
-async function goDailyQuestion() {
-  const question = await getCloudDailyQuestion()
-  if (!question?.id) return
-  navigateTo(`/pages/normalQuestionDetail/index?id=${question.id}&key=daily&daily=1&ids=${question.id}`)
-}
-
-function getDailyQuestion() {
-  if (!questions.value.length) return null
-  const today = new Date().toISOString().split('T')[0]
-  const cachedQuestion = Taro.getStorageSync(`dailyQuestion_${today}`)
-  if (cachedQuestion?.id) return cachedQuestion
-  const randomIndex = Math.floor(Math.random() * questions.value.length)
-  const question = questions.value[randomIndex]
-  Taro.setStorageSync(`dailyQuestion_${today}`, question)
-  return question
-}
-
-async function getCloudDailyQuestion() {
-  if (!questions.value.length) return null
-
-  try {
-    const result = await getDailyQuestionByCloud({
-      questionIds: questions.value.map(question => question.id)
-    })
-    const question = questions.value.find(item => item.id === Number(result?.questionId))
-    if (result?.success && question) {
-      Taro.setStorageSync(`dailyQuestion_${result.date}`, question)
-      return question
-    }
-  } catch (error) {
-    console.log('每日一题同步失败，使用本地题目', error)
-  }
-
-  return dailyQuestion.value
 }
 
 function loadQuestions() {
@@ -161,6 +121,108 @@ function createCanvasTexture(draw, textureWidth, textureHeight) {
   const texture = THREE.CanvasTexture ? new THREE.CanvasTexture(target.canvas) : new THREE.Texture(target.canvas)
   texture.needsUpdate = true
   return texture
+}
+
+function colorToRgb(hexColor) {
+  return {
+    r: (hexColor >> 16) & 255,
+    g: (hexColor >> 8) & 255,
+    b: hexColor & 255
+  }
+}
+
+function rgbToCss(color, alpha = 1) {
+  return `rgba(${color.r},${color.g},${color.b},${alpha})`
+}
+
+function mixRgb(colorA, colorB, amount) {
+  const safeAmount = Math.max(0, Math.min(1, amount))
+  return {
+    r: Math.round(colorA.r + (colorB.r - colorA.r) * safeAmount),
+    g: Math.round(colorA.g + (colorB.g - colorA.g) * safeAmount),
+    b: Math.round(colorA.b + (colorB.b - colorA.b) * safeAmount)
+  }
+}
+
+function strokeScaledCircle(ctx, x, y, radiusX, radiusY, rotation = 0) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(rotation)
+  ctx.scale(radiusX, radiusY)
+  ctx.beginPath()
+  ctx.arc(0, 0, 1, 0, Math.PI * 2)
+  ctx.restore()
+  ctx.stroke()
+}
+
+function createPlanetTexture(module, active = false) {
+  const baseColor = colorToRgb(module.color)
+  const coldLight = { r: 218, g: 252, b: 255 }
+  const shadow = mixRgb(baseColor, { r: 4, g: 9, b: 20 }, 0.84)
+  const mid = mixRgb(baseColor, coldLight, active ? 0.24 : 0.16)
+  const highlight = mixRgb(baseColor, coldLight, active ? 0.72 : 0.58)
+  const textureSize = module.key === 'js' ? 512 : 384
+
+  return createCanvasTexture((ctx, w, h) => {
+    const centerX = w / 2
+    const centerY = h / 2
+    const radius = Math.min(w, h) / 2
+
+    ctx.clearRect(0, 0, w, h)
+
+    const body = ctx.createRadialGradient(centerX - radius * 0.36, centerY - radius * 0.38, radius * 0.05, centerX, centerY, radius)
+    body.addColorStop(0, rgbToCss(highlight, active ? 0.9 : 0.72))
+    body.addColorStop(0.22, rgbToCss(mid, active ? 0.68 : 0.5))
+    body.addColorStop(0.48, rgbToCss(baseColor, active ? 0.38 : 0.28))
+    body.addColorStop(0.74, rgbToCss(shadow, 0.16))
+    body.addColorStop(1, 'rgba(2,7,18,0.02)')
+    ctx.fillStyle = body
+    ctx.fillRect(0, 0, w, h)
+
+    const rim = ctx.createRadialGradient(centerX + radius * 0.18, centerY + radius * 0.12, radius * 0.32, centerX, centerY, radius)
+    rim.addColorStop(0, 'rgba(255,255,255,0)')
+    rim.addColorStop(0.54, 'rgba(255,255,255,0)')
+    rim.addColorStop(0.8, rgbToCss(highlight, active ? 0.34 : 0.2))
+    rim.addColorStop(1, rgbToCss(highlight, active ? 0.18 : 0.1))
+    ctx.fillStyle = rim
+    ctx.fillRect(0, 0, w, h)
+
+    ctx.save()
+    ctx.globalCompositeOperation = 'screen'
+    ctx.lineCap = 'round'
+    for (let i = 0; i < 4; i += 1) {
+      const y = centerY + Math.sin(i * 1.38 + module.key.length) * radius * 0.34
+      const xOffset = Math.cos(i * 1.8) * radius * 0.1
+      ctx.strokeStyle = rgbToCss(highlight, active ? 0.13 : 0.08)
+      ctx.lineWidth = i === 0 ? 1.6 : 0.85
+      strokeScaledCircle(ctx, centerX + xOffset, y, radius * (0.58 + i * 0.08), radius * 0.045, Math.sin(i) * 0.5)
+    }
+
+    const sparkCount = active ? 36 : 18
+    for (let i = 0; i < sparkCount; i += 1) {
+      const seed = Math.sin((i + 1) * 91.7 + module.key.length * 13.1) * 10000
+      const seed2 = Math.sin((i + 5) * 47.3 + module.radius * 29) * 10000
+      const x = centerX + (seed - Math.floor(seed) - 0.5) * radius * 1.56
+      const y = centerY + (seed2 - Math.floor(seed2) - 0.5) * radius * 1.56
+      const dx = x - centerX
+      const dy = y - centerY
+      if (dx * dx + dy * dy > radius * radius * 0.78) continue
+      const size = i % 7 === 0 ? 1.7 : 0.8
+      ctx.fillStyle = rgbToCss(highlight, i % 7 === 0 ? 0.66 : 0.26)
+      ctx.beginPath()
+      ctx.arc(x, y, size, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.restore()
+
+    const glass = ctx.createRadialGradient(centerX - radius * 0.18, centerY - radius * 0.2, radius * 0.2, centerX, centerY, radius * 0.98)
+    glass.addColorStop(0, 'rgba(255,255,255,0.1)')
+    glass.addColorStop(0.52, 'rgba(255,255,255,0)')
+    glass.addColorStop(0.84, rgbToCss(highlight, active ? 0.13 : 0.08))
+    glass.addColorStop(1, 'rgba(255,255,255,0.02)')
+    ctx.fillStyle = glass
+    ctx.fillRect(0, 0, w, h)
+  }, textureSize, textureSize)
 }
 
 function roundedRect(ctx, x, y, w, h, r) {
@@ -242,11 +304,11 @@ function addHeader() {
     drawText(ctx, '前端面面', 0, 0, 28, '#f5f8ff', '800')
     drawText(ctx, '探索你的知识宇宙', 0, 34, 14, '#8393b6', '400')
 
-    const gradient = ctx.createLinearGradient(220, 24, 305, 55)
+    const gradient = ctx.createLinearGradient(222, 18, 312, 46)
     gradient.addColorStop(0, 'rgba(65,230,255,0)')
     gradient.addColorStop(1, '#41e6ff')
     ctx.save()
-    ctx.translate(260, 38)
+    ctx.translate(268, 30)
     ctx.rotate(20 * Math.PI / 180)
     ctx.fillStyle = gradient
     roundedRect(ctx, -44, -1, 88, 2, 1)
@@ -255,16 +317,10 @@ function addHeader() {
 
     ctx.fillStyle = '#f5f8ff'
     ctx.beginPath()
-    ctx.arc(320, 5, 5, 0, Math.PI * 2)
+    ctx.arc(318, 5, 4, 0, Math.PI * 2)
     ctx.fill()
-
-    ctx.fillStyle = 'rgba(16,28,56,0.75)'
-    roundedRect(ctx, 264, 22, 76, 28, 14)
-    ctx.fill()
-    drawText(ctx, '每日任务', 279, 29, 12, '#41e6ff', '700')
   })
   addUiPlane('header', 23, 58, 344, 96, texture, 2)
-  addHitZone('daily', 286, 58, 82, 54, goDailyQuestion)
 }
 
 function addFocusCard() {
@@ -369,18 +425,189 @@ function createOrbit(radius, opacity = 0.7) {
   cosmosGroup.add(orbit)
 }
 
-function createPlanetLabel(text, radius, key) {
-  const texture = renderUiTexture(72, 24, (ctx) => {
-    drawText(ctx, text, 36, 6, 11, '#d6e4ff', '600', 'center')
+function createCosmosBackgroundTexture() {
+  return createCanvasTexture((ctx, w, h) => {
+    const sky = ctx.createLinearGradient(0, 0, 0, h)
+    sky.addColorStop(0, '#030813')
+    sky.addColorStop(0.38, '#06142a')
+    sky.addColorStop(0.68, '#071a33')
+    sky.addColorStop(1, '#030711')
+    ctx.fillStyle = sky
+    ctx.fillRect(0, 0, w, h)
+
+    const blueNebula = ctx.createRadialGradient(w * 0.68, h * 0.34, 8, w * 0.68, h * 0.34, w * 0.58)
+    blueNebula.addColorStop(0, 'rgba(54,146,255,0.2)')
+    blueNebula.addColorStop(0.32, 'rgba(31,95,190,0.12)')
+    blueNebula.addColorStop(1, 'rgba(31,95,190,0)')
+    ctx.fillStyle = blueNebula
+    ctx.fillRect(0, 0, w, h)
+
+    const cyanFog = ctx.createRadialGradient(w * 0.22, h * 0.46, 10, w * 0.22, h * 0.46, w * 0.52)
+    cyanFog.addColorStop(0, 'rgba(65,230,255,0.12)')
+    cyanFog.addColorStop(0.4, 'rgba(65,230,255,0.055)')
+    cyanFog.addColorStop(1, 'rgba(65,230,255,0)')
+    ctx.fillStyle = cyanFog
+    ctx.fillRect(0, 0, w, h)
+
+    const warmNebula = ctx.createRadialGradient(w * 0.76, h * 0.58, 8, w * 0.76, h * 0.58, w * 0.38)
+    warmNebula.addColorStop(0, 'rgba(255,191,92,0.1)')
+    warmNebula.addColorStop(0.42, 'rgba(255,126,75,0.05)')
+    warmNebula.addColorStop(1, 'rgba(255,126,75,0)')
+    ctx.fillStyle = warmNebula
+    ctx.fillRect(0, 0, w, h)
+
+    ctx.save()
+    ctx.globalCompositeOperation = 'screen'
+    ctx.translate(w * 0.62, h * 0.4)
+    ctx.rotate(-24 * Math.PI / 180)
+    for (let i = 0; i < 42; i += 1) {
+      const x = (Math.sin(i * 21.7) * 0.5 + 0.5) * w * 0.92 - w * 0.46
+      const y = (Math.sin(i * 9.3 + 1.7) * 0.5 + 0.5) * h * 0.22 - h * 0.11
+      const length = 18 + (i % 5) * 10
+      const alpha = 0.018 + (i % 4) * 0.012
+      const streak = ctx.createLinearGradient(x, y, x + length, y)
+      streak.addColorStop(0, 'rgba(65,230,255,0)')
+      streak.addColorStop(0.5, `rgba(114,181,255,${alpha})`)
+      streak.addColorStop(1, 'rgba(65,230,255,0)')
+      ctx.strokeStyle = streak
+      ctx.lineWidth = i % 6 === 0 ? 1.2 : 0.6
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      ctx.lineTo(x + length, y + Math.sin(i) * 4)
+      ctx.stroke()
+    }
+    ctx.restore()
+
+    ctx.save()
+    ctx.globalCompositeOperation = 'screen'
+    for (let i = 0; i < 220; i += 1) {
+      const seed = Math.sin((i + 3) * 78.13) * 10000
+      const seed2 = Math.sin((i + 11) * 36.41) * 10000
+      const x = (seed - Math.floor(seed)) * w
+      const y = (seed2 - Math.floor(seed2)) * h
+      const bright = i % 19 === 0
+      const size = bright ? 1.6 + (i % 3) * 0.7 : 0.55 + (i % 4) * 0.18
+      const alpha = bright ? 0.74 : 0.18 + (i % 5) * 0.05
+      ctx.fillStyle = i % 13 === 0 ? `rgba(255,198,122,${alpha})` : `rgba(190,228,255,${alpha})`
+      ctx.beginPath()
+      ctx.arc(x, y, size, 0, Math.PI * 2)
+      ctx.fill()
+
+      if (bright) {
+        ctx.strokeStyle = `rgba(91,179,255,${alpha * 0.44})`
+        ctx.lineWidth = 0.8
+        ctx.beginPath()
+        ctx.moveTo(x - size * 5, y)
+        ctx.lineTo(x + size * 5, y)
+        ctx.moveTo(x, y - size * 5)
+        ctx.lineTo(x, y + size * 5)
+        ctx.stroke()
+      }
+    }
+    ctx.restore()
+  }, 768, 1400)
+}
+
+function createBackgroundSky() {
+  const texture = createCosmosBackgroundTexture()
+  if (!texture) return
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: false,
+    depthTest: false,
+    depthWrite: false
+  })
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 14.8), material)
+  plane.position.set(0, 0, -4.8)
+  plane.renderOrder = -20
+  scene.add(plane)
+  backgroundMaterials.push(material)
+}
+
+function createPlanetTextSprite(module, radius, isCore) {
+  const text = isCore ? 'JS' : module.name
+  const texture = renderUiTexture(104, 64, (ctx) => {
+    const glow = ctx.createRadialGradient(52, 30, 4, 52, 30, 44)
+    glow.addColorStop(0, isCore ? 'rgba(65,230,255,0.55)' : 'rgba(255,255,255,0.26)')
+    glow.addColorStop(0.45, isCore ? 'rgba(65,230,255,0.16)' : 'rgba(65,230,255,0.1)')
+    glow.addColorStop(1, 'rgba(65,230,255,0)')
+    ctx.fillStyle = glow
+    ctx.beginPath()
+    ctx.arc(52, 30, 44, 0, Math.PI * 2)
+    ctx.fill()
+
+    const panelWidth = isCore ? 58 : Math.min(88, Math.max(52, text.length * 19 + 20))
+    const panelX = (104 - panelWidth) / 2
+    ctx.fillStyle = isCore ? 'rgba(255,255,255,0.12)' : 'rgba(5,14,30,0.18)'
+    roundedRect(ctx, panelX, isCore ? 14 : 10, panelWidth, isCore ? 36 : 44, 13)
+    ctx.fill()
+    ctx.strokeStyle = isCore ? 'rgba(185,249,255,0.62)' : 'rgba(218,252,255,0.3)'
+    ctx.lineWidth = 1.2
+    roundedRect(ctx, panelX, isCore ? 14 : 10, panelWidth, isCore ? 36 : 44, 13)
+    ctx.stroke()
+
+    const fontSize = isCore ? 32 : (text.length > 4 ? 17 : 22)
+    drawText(ctx, text, 52, isCore ? 12 : 18, fontSize, '#f8fdff', '900', 'center')
   })
   if (!texture) return null
-  const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false })
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending || THREE.NormalBlending
+  })
   const sprite = new THREE.Sprite(material)
-  sprite.scale.set(0.52, 0.17, 1)
-  sprite.position.set(0, -radius - 0.18, 0.1)
-  sprite.userData = { key, baseScale: 0.52 }
-  overlayMaterials.push(material)
+  const scaleX = isCore ? radius * 1.26 : Math.max(radius * Math.min(1.48, text.length * 0.22 + 0.82), 0.28)
+  const scaleY = isCore ? radius * 0.74 : Math.max(radius * 0.72, 0.16)
+  sprite.scale.set(scaleX, scaleY, 1)
+  sprite.position.set(0, 0, radius * 0.04)
+  sprite.renderOrder = 2
+  sprite.userData = { baseScaleX: scaleX, baseScaleY: scaleY }
+  planetMaterials.push(material)
   return sprite
+}
+
+function createRingNodes(radius, color) {
+  const nodes = new THREE.Group()
+  for (let i = 0; i < 4; i += 1) {
+    const angle = (Math.PI * 2 * i) / 4 + Math.PI * 0.12
+    const node = new THREE.Mesh(
+      new THREE.SphereGeometry(radius * 0.038, 12, 12),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.82,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending || THREE.NormalBlending
+      })
+    )
+    node.position.set(Math.cos(angle) * radius * 1.62, Math.sin(angle) * radius * 0.2, Math.sin(angle) * radius * 1.02)
+    nodes.add(node)
+  }
+  return nodes
+}
+
+function createEnergyArcs(radius, color, isCore) {
+  const arcs = new THREE.Group()
+  const arcCount = isCore ? 4 : 2
+  for (let i = 0; i < arcCount; i += 1) {
+    const arc = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * (0.82 + i * 0.12), radius * (isCore ? 0.006 : 0.004), 8, 96, Math.PI * (isCore ? 1.28 : 0.92)),
+      new THREE.MeshBasicMaterial({
+        color,
+        transparent: true,
+        opacity: isCore ? 0.34 : 0.18,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending || THREE.NormalBlending
+      })
+    )
+    arc.rotation.x = Math.PI * (0.22 + i * 0.18)
+    arc.rotation.y = Math.PI * (0.18 + i * 0.14)
+    arc.rotation.z = Math.PI * (0.14 + i * 0.26)
+    arcs.add(arc)
+  }
+  return arcs
 }
 
 function createPlanet(module, index) {
@@ -388,41 +615,107 @@ function createPlanet(module, index) {
   const group = new THREE.Group()
   group.name = module.key
   group.position.set(...module.position)
+  const isCore = module.key === 'js'
+  const texture = createPlanetTexture(module, isCore)
+  const atmosphereColor = isCore ? 0x9df8ff : module.color
 
   const glow = new THREE.Mesh(
-    new THREE.SphereGeometry(radius * 1.95, 24, 24),
-    new THREE.MeshBasicMaterial({ color: module.color, transparent: true, opacity: module.key === 'js' ? 0.2 : 0.14 })
+    new THREE.SphereGeometry(radius * (isCore ? 1.58 : 1.42), 28, 28),
+    new THREE.MeshBasicMaterial({
+      color: module.color,
+      transparent: true,
+      opacity: isCore ? 0.08 : 0.075,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending || THREE.NormalBlending
+    })
   )
   group.add(glow)
 
+  const outerGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(radius * (isCore ? 1.16 : 1.12), 36, 36),
+    new THREE.MeshBasicMaterial({
+      color: atmosphereColor,
+      transparent: true,
+      opacity: isCore ? 0.18 : 0.08,
+      side: THREE.BackSide || THREE.FrontSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending || THREE.NormalBlending
+    })
+  )
+  group.add(outerGlow)
+
   const planet = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, 36, 36),
+    new THREE.SphereGeometry(radius, isCore ? 56 : 42, isCore ? 56 : 36),
     new THREE.MeshPhongMaterial({
-      color: module.color,
+      color: texture ? 0xffffff : module.color,
+      map: texture || null,
       emissive: module.emissive,
-      shininess: 120
+      emissiveIntensity: isCore ? 0.72 : 0.62,
+      shininess: isCore ? 280 : 220,
+      transparent: true,
+      opacity: isCore ? 0.58 : 0.56,
+      specular: new THREE.Color(isCore ? 0xbefaff : 0x7bcfff)
     })
   )
   group.add(planet)
 
-  const grid = new THREE.Mesh(
-    new THREE.SphereGeometry(radius * 1.01, 16, 12),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, wireframe: true })
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(radius * (isCore ? 0.34 : 0.22), 24, 24),
+    new THREE.MeshBasicMaterial({
+      color: isCore ? 0xf7fbff : module.color,
+      transparent: true,
+      opacity: isCore ? 0.32 : 0.26,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending || THREE.NormalBlending
+    })
   )
-  group.add(grid)
+  core.position.set(-radius * 0.16, radius * 0.12, radius * 0.28)
+  group.add(core)
+
+  const energyArcs = createEnergyArcs(radius, isCore ? 0xdffbff : atmosphereColor, isCore)
+  group.add(energyArcs)
 
   let ring = null
   if (['react', 'arithmetic', 'js'].includes(module.key)) {
     ring = new THREE.Mesh(
-      new THREE.TorusGeometry(radius * 1.45, 0.009, 12, 96),
-      new THREE.MeshBasicMaterial({ color: 0x41e6ff, transparent: true, opacity: 0.75 })
+      new THREE.TorusGeometry(radius * (isCore ? 1.62 : 1.45), radius * 0.025, 14, 128),
+      new THREE.MeshBasicMaterial({
+        color: isCore ? 0xb9f9ff : 0x41e6ff,
+        transparent: true,
+        opacity: isCore ? 0.78 : 0.42,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending || THREE.NormalBlending
+      })
     )
     ring.rotation.x = Math.PI * 0.58
     group.add(ring)
   }
 
-  const label = createPlanetLabel(module.name, radius, module.key)
-  if (label) group.add(label)
+  let secondaryRing = null
+  if (isCore) {
+    secondaryRing = new THREE.Mesh(
+      new THREE.TorusGeometry(radius * 1.28, radius * 0.01, 10, 128),
+      new THREE.MeshBasicMaterial({
+        color: 0xffd75c,
+        transparent: true,
+        opacity: 0.42,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending || THREE.NormalBlending
+      })
+    )
+    secondaryRing.rotation.x = Math.PI * 0.18
+    secondaryRing.rotation.y = Math.PI * 0.42
+    group.add(secondaryRing)
+  }
+
+  const coreText = createPlanetTextSprite(module, radius, isCore)
+  if (coreText) group.add(coreText)
+
+  const ringNodes = isCore ? createRingNodes(radius, 0xb9f9ff) : null
+  if (ringNodes) {
+    ringNodes.rotation.x = Math.PI * 0.58
+    group.add(ringNodes)
+  }
 
   const hitArea = new THREE.Mesh(
     new THREE.SphereGeometry(radius * 1.95, 16, 16),
@@ -438,10 +731,14 @@ function createPlanet(module, index) {
     baseY: module.position[1],
     radius,
     glow,
+    outerGlow,
     planet,
-    grid,
+    core,
+    energyArcs,
     ring,
-    label
+    secondaryRing,
+    coreText,
+    ringNodes
   }
   planetTargets.push(group)
   cosmosGroup.add(group)
@@ -449,7 +746,7 @@ function createPlanet(module, index) {
 
 function createStars() {
   const starGeometry = new THREE.Geometry()
-  for (let i = 0; i < 260; i += 1) {
+  for (let i = 0; i < 420; i += 1) {
     starGeometry.vertices.push(new THREE.Vector3(
       (Math.random() - 0.5) * 6.8,
       (Math.random() - 0.5) * 4.7,
@@ -458,7 +755,13 @@ function createStars() {
   }
   scene.add(new THREE.Points(
     starGeometry,
-    new THREE.PointsMaterial({ color: 0xffffff, size: 0.013, transparent: true, opacity: 0.68 })
+    new THREE.PointsMaterial({
+      color: 0xd9f4ff,
+      size: 0.017,
+      transparent: true,
+      opacity: 0.86,
+      blending: THREE.AdditiveBlending || THREE.NormalBlending
+    })
   ))
 }
 
@@ -478,11 +781,14 @@ function updatePlanetFocusState() {
 
   planetTargets.forEach((group, index) => {
     const active = group.userData.key === activeKey
+    const isCore = group.userData.key === 'js'
     const pulse = active ? 1 + Math.sin(time * 2.2) * 0.035 : 1
     const targetScale = (active ? 1.2 : 1) * pulse
-    const targetOpacity = active ? 0.34 : 0.13
-    const targetGridOpacity = active ? 0.34 : 0.16
-    const targetLabelOpacity = active ? 1 : 0.72
+    const targetOpacity = active ? 0.13 : (isCore ? 0.04 : 0.065)
+    const targetAtmosphereOpacity = active ? 0.22 : (isCore ? 0.07 : 0.1)
+    const targetCoreOpacity = active ? 0.42 : (isCore ? 0.14 : 0.24)
+    const targetArcOpacity = active ? 0.3 : (isCore ? 0.11 : 0.16)
+    const targetPlanetOpacity = active ? 0.6 : (isCore ? 0.42 : 0.54)
 
     group.scale.x = easeTowards(group.scale.x, targetScale, 0.1)
     group.scale.y = easeTowards(group.scale.y, targetScale, 0.1)
@@ -494,26 +800,50 @@ function updatePlanetFocusState() {
     )
 
     group.userData.glow.material.opacity = easeTowards(group.userData.glow.material.opacity, targetOpacity, 0.12)
-    group.userData.grid.material.opacity = easeTowards(group.userData.grid.material.opacity, targetGridOpacity, 0.12)
-    group.userData.planet.material.emissiveIntensity = easeTowards(group.userData.planet.material.emissiveIntensity || 1, active ? 1.75 : 1, 0.1)
+    group.userData.outerGlow.material.opacity = easeTowards(group.userData.outerGlow.material.opacity, targetAtmosphereOpacity, 0.12)
+    group.userData.outerGlow.scale.setScalar(1 + Math.sin(time * 1.8 + index) * (active ? 0.035 : 0.018))
+    group.userData.core.material.opacity = easeTowards(group.userData.core.material.opacity, targetCoreOpacity, 0.12)
+    group.userData.core.scale.setScalar(1 + Math.sin(time * 2.8 + index * 0.7) * (active ? 0.16 : 0.07))
+    group.userData.planet.material.opacity = easeTowards(group.userData.planet.material.opacity || 0.58, targetPlanetOpacity, 0.1)
+    group.userData.planet.material.emissiveIntensity = easeTowards(group.userData.planet.material.emissiveIntensity || 0.58, active ? 0.95 : (isCore ? 0.42 : 0.62), 0.1)
+    group.userData.energyArcs.rotation.y += active ? 0.007 : 0.0025
+    group.userData.energyArcs.rotation.x += active ? 0.003 : 0.001
+    group.userData.energyArcs.children.forEach((arc, arcIndex) => {
+      arc.material.opacity = easeTowards(arc.material.opacity, targetArcOpacity * (arcIndex === 0 ? 1 : 0.72), 0.12)
+    })
+    group.userData.outerGlow.rotation.y -= active ? 0.0025 : 0.0012
 
     if (group.userData.ring) {
       group.userData.ring.material.opacity = easeTowards(group.userData.ring.material.opacity, active ? 0.95 : 0.56, 0.12)
       group.userData.ring.rotation.z += active ? 0.018 : 0.006
     }
 
-    if (group.userData.label) {
-      group.userData.label.material.opacity = easeTowards(group.userData.label.material.opacity, targetLabelOpacity, 0.12)
-      const labelScale = active ? 0.62 : 0.52
-      group.userData.label.scale.x = easeTowards(group.userData.label.scale.x, labelScale, 0.1)
-      group.userData.label.scale.y = easeTowards(group.userData.label.scale.y, active ? 0.2 : 0.17, 0.1)
+    if (group.userData.secondaryRing) {
+      group.userData.secondaryRing.material.opacity = easeTowards(group.userData.secondaryRing.material.opacity, active ? 0.72 : 0.38, 0.12)
+      group.userData.secondaryRing.rotation.z -= active ? 0.014 : 0.004
+      group.userData.secondaryRing.rotation.y += active ? 0.006 : 0.002
     }
+
+    if (group.userData.coreText) {
+      group.userData.coreText.material.opacity = easeTowards(group.userData.coreText.material.opacity ?? 1, active ? 1 : 0.78, 0.12)
+      group.userData.coreText.scale.x = easeTowards(group.userData.coreText.scale.x, group.userData.coreText.userData.baseScaleX, 0.1)
+      group.userData.coreText.scale.y = easeTowards(group.userData.coreText.scale.y, group.userData.coreText.userData.baseScaleY, 0.1)
+    }
+
+    if (group.userData.ringNodes) {
+      group.userData.ringNodes.rotation.z += active ? 0.018 : 0.006
+      group.userData.ringNodes.children.forEach((node, nodeIndex) => {
+        node.material.opacity = easeTowards(node.material.opacity, active ? 0.92 : 0.48, 0.12)
+        node.scale.setScalar(1 + Math.sin(time * 2.4 + nodeIndex) * (active ? 0.22 : 0.08))
+      })
+    }
+
   })
 }
 
 function createScene() {
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x050711)
+  scene.background = new THREE.Color(0x030711)
 
   camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100)
   camera.position.set(0, 0.12, 5.8)
@@ -528,6 +858,7 @@ function createScene() {
   cosmosGroup.scale.set(0.9, 0.9, 0.9)
   scene.add(cosmosGroup)
 
+  createBackgroundSky()
   createStars()
   createOrbit(2.18, 0.58)
   createOrbit(1.55, 0.5)
@@ -597,6 +928,14 @@ function stopScene() {
     animationFrameId = 0
   }
   clearUi()
+  planetMaterials.forEach((material) => {
+    material.map?.dispose?.()
+    material.dispose?.()
+  })
+  backgroundMaterials.forEach((material) => {
+    material.map?.dispose?.()
+    material.dispose?.()
+  })
   renderer?.dispose?.()
   THREE = null
   canvas = null
@@ -611,6 +950,8 @@ function stopScene() {
   pointer = null
   planetTargets = []
   orbitTargets = []
+  planetMaterials = []
+  backgroundMaterials = []
 }
 
 function getTouchPoint(event) {
