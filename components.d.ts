@@ -11,6 +11,7 @@ declare module 'vue' {
     DailyQuestion: typeof import('./src/components/DailyQuestion.vue')['default']
     FrontendModules: typeof import('./src/components/FrontendModules.vue')['default']
     KnowledgeCosmos: typeof import('./src/components/KnowledgeCosmos.vue')['default']
+    MarkdownRenderer: typeof import('./src/components/MarkdownRenderer.vue')['default']
     QuestionDetail: typeof import('./src/components/QuestionDetail.vue')['default']
     Tabbar: typeof import('./src/components/Tabbar.vue')['default']
   }

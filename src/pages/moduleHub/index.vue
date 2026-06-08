@@ -4,7 +4,7 @@
       title="题库星系"
       subtitle="选择一个知识星球开始练习"
       :top-offset="16"
-      meta="20 道题"
+      :meta="`${totalCount} 道题`"
     />
 
     <view class="hub-content">
@@ -71,10 +71,10 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import CosmosHeadbar from '../../components/CosmosHeadbar.vue'
 import Tabbar from '../../components/Tabbar.vue'
-import questionsData from '../../data/questions.json'
+import { CATEGORY_META, getCategoryList, getFallbackQuestions, refreshQuestionBankMeta } from '../../services/questionBank'
 
 const searchText = ref('')
 const activeFilter = ref('all')
@@ -87,28 +87,29 @@ const filters = [
   { key: 'advanced', name: '进阶' }
 ]
 
-const modules = [
-  { key: 'html', name: 'HTML', shortName: 'H', group: 'base', desc: '语义化、结构与浏览器基础', level: '结构与语义', gradient: 'radial-gradient(circle at 35% 30%, #ffd0b8 0%, #ff7146 48%, #7a1d12 100%)' },
-  { key: 'css', name: 'CSS', shortName: 'C', group: 'base', desc: '布局、动画、响应式与视觉样式', level: '布局与动画', gradient: 'radial-gradient(circle at 35% 30%, #c7dcff 0%, #5da8ff 48%, #163672 100%)' },
-  { key: 'js', name: 'JavaScript', shortName: 'JS', group: 'runtime', desc: '闭包、原型、异步与语言机制', level: '核心恒星', gradient: 'radial-gradient(circle at 35% 30%, #d8fbff 0%, #32d9ff 48%, #0b5172 100%)' },
-  { key: 'vue', name: 'Vue', shortName: 'V', group: 'framework', desc: '响应式、组件、diff 与生态工程', level: '响应式生态', gradient: 'radial-gradient(circle at 35% 30%, #c9ffe4 0%, #42f5b0 48%, #0b6a4a 100%)' },
-  { key: 'react', name: 'React', shortName: 'R', group: 'framework', desc: 'Fiber、Hooks、状态与渲染模型', level: '组件模型', gradient: 'radial-gradient(circle at 35% 30%, #d5f7ff 0%, #66dcff 48%, #0a3d55 100%)' },
-  { key: 'node', name: 'Node', shortName: 'N', group: 'runtime', desc: '事件循环、模块系统与服务端基础', level: '运行时服务', gradient: 'radial-gradient(circle at 35% 30%, #d3ffc7 0%, #5de879 48%, #104918 100%)' },
-  { key: 'applet', name: '小程序', shortName: '微', group: 'advanced', desc: '生命周期、跨端能力与工程限制', level: '跨端基地', gradient: 'radial-gradient(circle at 35% 30%, #d6ffd4 0%, #58ff7a 48%, #0d4a1b 100%)' },
-  { key: 'net', name: '网络', shortName: '网', group: 'advanced', desc: 'HTTP、缓存、安全与性能边界', level: '协议星域', gradient: 'radial-gradient(circle at 35% 30%, #ffd4ac 0%, #ff9b4b 48%, #65300b 100%)' },
-  { key: 'arithmetic', name: '算法', shortName: '算', group: 'advanced', desc: '复杂度、数据结构与解题模型', level: '逻辑晶体', gradient: 'radial-gradient(circle at 35% 30%, #ffe7a8 0%, #ffc14d 48%, #684000 100%)' }
-]
+const modules = ref(CATEGORY_META.map(item => ({
+  key: item.id,
+  name: item.name,
+  shortName: item.shortName,
+  group: item.group,
+  desc: item.description,
+  level: item.level,
+  gradient: item.gradient,
+  count: 0
+})))
 
 const questions = computed(() => {
   const stored = Taro.getStorageSync('questions')
-  return Array.isArray(stored) && stored.length ? stored : questionsData
+  return Array.isArray(stored) && stored.length ? stored : getFallbackQuestions()
 })
 
-const totalCount = computed(() => questions.value.length)
+const totalCount = computed(() => (
+  modules.value.reduce((sum, item) => sum + Number(item.count || 0), 0) || questions.value.length
+))
 
-const moduleStats = computed(() => modules.map((module) => ({
+const moduleStats = computed(() => modules.value.map((module) => ({
   ...module,
-  count: questions.value.filter((question) => question.category === module.key).length
+  count: module.count || questions.value.filter((question) => question.category === module.key).length
 })))
 
 const visibleModules = computed(() => {
@@ -130,6 +131,33 @@ const recommendedModule = computed(() => (
 function goModule(key) {
   Taro.navigateTo({ url: `/pages/questionList/index?key=${key}` })
 }
+
+async function loadModules() {
+  try {
+    await refreshQuestionBankMeta()
+    const categories = await getCategoryList({ refresh: true })
+    const fallbackMap = new Map(CATEGORY_META.map(item => [item.id, item]))
+    modules.value = categories.map((item) => {
+      const fallback = fallbackMap.get(item.id) || {}
+      return {
+        key: item.id,
+        name: item.name || fallback.name,
+        shortName: item.shortName || fallback.shortName,
+        group: item.group || fallback.group || 'advanced',
+        desc: item.description || fallback.description,
+        level: item.level || fallback.level,
+        gradient: item.gradient || fallback.gradient,
+        count: item.questionCount || 0
+      }
+    })
+  } catch (error) {
+    console.log('题库分类加载失败', error)
+  }
+}
+
+useDidShow(() => {
+  loadModules()
+})
 </script>
 
 <style lang="scss">

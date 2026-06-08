@@ -5,6 +5,7 @@ cloud.init({
 })
 
 const db = cloud.database()
+const _ = db.command
 const questionStates = db.collection('user_question_states')
 
 exports.main = async (event) => {
@@ -19,25 +20,30 @@ exports.main = async (event) => {
     }
   }
 
-  const questionId = Number(event.questionId)
+  const questionId = String(event.questionId || '').trim()
   const category = String(event.category || '')
   const isFavorited = Boolean(event.isFavorited)
 
-  if (!Number.isFinite(questionId)) {
+  if (!questionId) {
     return {
       success: false,
       message: 'questionId 无效'
     }
   }
 
+  const questionIdCandidates = Number.isFinite(Number(questionId))
+    ? [questionId, Number(questionId)]
+    : [questionId]
+
   const existing = await questionStates
-    .where({ openid, questionId })
+    .where({ openid, questionId: _.in(questionIdCandidates) })
     .limit(1)
     .get()
 
   if (existing.data.length) {
     await questionStates.doc(existing.data[0]._id).update({
       data: {
+        questionId,
         category,
         isFavorited,
         updatedAt: now

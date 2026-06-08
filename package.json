@@ -31,6 +31,8 @@
     "mp:preview": "node scripts/mp-preview.cjs",
     "mp:upload": "node scripts/mp-upload.cjs",
     "mp:page-check": "node scripts/mp-page-check.cjs",
+    "question-bank:seed": "node scripts/build-question-bank-seed.cjs",
+    "question-bank:validate": "node scripts/validate-question-bank.cjs",
     "check:weapp": "pnpm build:weapp && pnpm mp:preview",
     "check:weapp:page": "pnpm build:weapp && pnpm mp:page-check"
   },

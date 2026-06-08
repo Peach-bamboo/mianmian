@@ -34,12 +34,12 @@ exports.main = async (event) => {
     }
   }
 
-  const questionId = Number(event.questionId)
+  const questionId = String(event.questionId || '').trim()
   const mode = String(event.mode || 'module')
   const category = String(event.category || '')
   const action = String(event.action || 'view')
 
-  if (!Number.isFinite(questionId)) {
+  if (!questionId) {
     return {
       success: false,
       message: 'questionId 无效'

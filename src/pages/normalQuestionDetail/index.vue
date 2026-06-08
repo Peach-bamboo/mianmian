@@ -25,7 +25,13 @@
           <text class="answer-title">解析</text>
           <text class="answer-toggle">{{ showAnswer ? '收起' : '展开' }}</text>
         </view>
-        <text v-if="showAnswer" class="answer-text">{{ currentQuestion.answer }}</text>
+        <MarkdownRenderer
+          v-if="showAnswer && answerContent"
+          :content="answerContent"
+        />
+        <text v-else-if="showAnswer" class="answer-status">
+          {{ isAnswerLoading ? '解析加载中...' : '解析暂不可用，已使用本地题库兜底' }}
+        </text>
       </view>
 
       <view class="mastery-row">
@@ -65,13 +71,15 @@
 import { computed, ref } from 'vue'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import CosmosHeadbar from '../../components/CosmosHeadbar.vue'
-import questionsData from '../../data/questions.json'
+import MarkdownRenderer from '../../components/MarkdownRenderer.vue'
 import { toggleFavoriteByCloud, updateMasteryByCloud } from '../../services/questionState'
 import { addPracticeRecordByCloud } from '../../services/cloud'
+import { getFallbackQuestions, getQuestionDetail, getQuestionList, normalizeQuestions, saveQuestionsToLegacyStorage } from '../../services/questionBank'
 
 const router = useRouter()
 const currentIndex = ref(0)
 const showAnswer = ref(false)
+const isAnswerLoading = ref(false)
 const questionPool = ref([])
 const allQuestions = ref([])
 const viewedQuestionIds = ref(new Set())
@@ -80,35 +88,61 @@ function parseIdsParam(value) {
   if (!value) return []
   return String(value)
     .split(',')
-    .map(id => Number(id))
-    .filter(id => Number.isFinite(id))
+    .map(id => String(id).trim())
+    .filter(Boolean)
 }
 
 function loadAllQuestions() {
-  const stored = Taro.getStorageSync('questions')
-  if (Array.isArray(stored) && stored.length) return stored
-  return questionsData
+  return getFallbackQuestions()
 }
 
-function buildQuestionPool() {
-  const idParam = Number(router.params.id)
+function mergePoolWithFreshContent(pool, freshQuestions) {
+  const freshMap = new Map(freshQuestions.map(item => [String(item.id), item]))
+  return pool.map((item) => {
+    const fresh = freshMap.get(String(item.id))
+    if (!fresh) return item
+    return {
+      ...fresh,
+      isFavorited: Boolean(item.isFavorited),
+      mastery: item.mastery || ''
+    }
+  })
+}
+
+async function buildQuestionPool() {
+  const idParam = String(router.params.id || '')
   const keyParam = router.params.key || ''
   const indexParam = Number(router.params.index || 0)
   const idsFromRoute = parseIdsParam(router.params.ids)
   const all = loadAllQuestions()
+  const storedPool = normalizeQuestions(Taro.getStorageSync('question_pool') || [])
   allQuestions.value = all
 
   if (idsFromRoute.length) {
-    const lookup = new Map(all.map(item => [item.id, item]))
+    const lookup = new Map([...storedPool, ...all].map(item => [String(item.id), item]))
     questionPool.value = idsFromRoute
       .map(id => lookup.get(id))
       .filter(Boolean)
+  } else if (storedPool.length && storedPool.find(item => String(item.id) === idParam)) {
+    questionPool.value = mergePoolWithFreshContent(storedPool, all)
   } else if (keyParam === 'favorites') {
     questionPool.value = all.filter(item => item.isFavorited)
   } else if (keyParam && keyParam !== 'random') {
-    questionPool.value = all.filter(item => item.category === keyParam)
+    try {
+      const result = await getQuestionList({ categoryId: keyParam, page: 1, pageSize: 100 })
+      questionPool.value = result.list || []
+    } catch (error) {
+      questionPool.value = all.filter(item => item.category === keyParam)
+    }
   } else {
     questionPool.value = all
+  }
+
+  if (idParam && !questionPool.value.find(item => String(item.id) === idParam)) {
+    try {
+      const detail = await getQuestionDetail(idParam)
+      questionPool.value = [detail, ...questionPool.value]
+    } catch (error) {}
   }
 
   if (!questionPool.value.length) {
@@ -116,7 +150,7 @@ function buildQuestionPool() {
     return
   }
 
-  const indexById = questionPool.value.findIndex(item => item.id === idParam)
+  const indexById = questionPool.value.findIndex(item => String(item.id) === idParam)
   if (indexById >= 0) {
     currentIndex.value = indexById
   } else if (Number.isFinite(indexParam) && indexParam >= 0 && indexParam < questionPool.value.length) {
@@ -124,6 +158,8 @@ function buildQuestionPool() {
   } else {
     currentIndex.value = 0
   }
+
+  hydrateCurrentQuestion()
 }
 
 buildQuestionPool()
@@ -159,6 +195,12 @@ const practiceMode = computed(() => {
   return 'module'
 })
 
+const answerContent = computed(() => {
+  const question = currentQuestion.value
+  if (!question) return ''
+  return question.answerMarkdown || question.answer || ''
+})
+
 async function recordPractice(action, options = {}) {
   const question = currentQuestion.value
   if (!question) return
@@ -184,15 +226,15 @@ async function recordPractice(action, options = {}) {
 function syncQuestionPatch(patch) {
   if (!currentQuestion.value) return
   const id = currentQuestion.value.id
-  let patchedQuestion = null
+  let patchedQuestion = { ...currentQuestion.value, ...patch }
   const nextAll = allQuestions.value.map((item) => (
-    item.id === id ? (patchedQuestion = { ...item, ...patch }) : item
+    String(item.id) === String(id) ? (patchedQuestion = { ...item, ...patch }) : item
   ))
   allQuestions.value = nextAll
-  Taro.setStorageSync('questions', nextAll)
+  saveQuestionsToLegacyStorage(nextAll)
 
   questionPool.value = questionPool.value.map((item) => (
-    item.id === id ? { ...item, ...patch } : item
+    String(item.id) === String(id) ? { ...item, ...patch } : item
   ))
 
   return patchedQuestion
@@ -211,6 +253,7 @@ async function toggleFavorite() {
 function toggleAnswer() {
   showAnswer.value = !showAnswer.value
   if (showAnswer.value) {
+    hydrateCurrentQuestion()
     recordPractice('answer')
   }
 }
@@ -230,6 +273,7 @@ function goPrev() {
   if (currentIndex.value <= 0) return
   currentIndex.value -= 1
   showAnswer.value = false
+  hydrateCurrentQuestion()
   recordPractice('view', { once: true })
 }
 
@@ -237,6 +281,7 @@ function goNext() {
   if (currentIndex.value >= questionPool.value.length - 1) return
   currentIndex.value += 1
   showAnswer.value = false
+  hydrateCurrentQuestion()
   recordPractice('view', { once: true })
 }
 
@@ -247,6 +292,27 @@ function goBack() {
 useDidShow(() => {
   recordPractice('view', { once: true })
 })
+
+async function hydrateCurrentQuestion() {
+  const question = currentQuestion.value
+  if (!question || question.answerMarkdown) return
+
+  isAnswerLoading.value = true
+  try {
+    const detail = await getQuestionDetail(question.id)
+    questionPool.value = questionPool.value.map(item => (
+      String(item.id) === String(question.id) ? { ...item, ...detail } : item
+    ))
+    allQuestions.value = allQuestions.value.map(item => (
+      String(item.id) === String(question.id) ? { ...item, ...detail } : item
+    ))
+    saveQuestionsToLegacyStorage(allQuestions.value)
+  } catch (error) {
+    console.warn('question detail hydrate failed', error)
+  } finally {
+    isAnswerLoading.value = false
+  }
+}
 </script>
 
 <style lang="scss">
@@ -339,7 +405,7 @@ useDidShow(() => {
   line-height: fig(18);
 }
 
-.answer-text {
+.answer-status {
   display: block;
   margin-top: fig(10);
   color: #c5d4ef;

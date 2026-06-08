@@ -16,6 +16,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import Taro from '@tarojs/taro'
 import { createScopedThreejs } from 'threejs-miniprogram'
+import { getFallbackQuestions, normalizeQuestions } from '../services/questionBank'
 
 const emit = defineEmits(['switch-profile'])
 
@@ -86,7 +87,9 @@ function navigateTo(url) {
 
 function loadQuestions() {
   const storedQuestions = Taro.getStorageSync('questions')
-  questions.value = Array.isArray(storedQuestions) ? storedQuestions : []
+  questions.value = Array.isArray(storedQuestions) && storedQuestions.length
+    ? normalizeQuestions(storedQuestions)
+    : getFallbackQuestions()
 }
 
 function queryCanvasNode() {

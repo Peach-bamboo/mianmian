@@ -245,9 +245,9 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import Taro, { useDidShow } from '@tarojs/taro'
 import CosmosHeadbar from '../../components/CosmosHeadbar.vue'
 import Tabbar from '../../components/Tabbar.vue'
-import questionsData from '../../data/questions.json'
 import { getDailyQuestionByCloud, getGrowthSummaryByCloud, loginByCloud, updateUserProfileByCloud, uploadCloudFile } from '../../services/cloud'
 import { syncCloudQuestionStates } from '../../services/questionState'
+import { getFallbackQuestions, normalizeQuestions } from '../../services/questionBank'
 
 const categoryLabelMap = {
   html: 'HTML',
@@ -288,8 +288,8 @@ const previewModules = [
 
 function loadQuestions() {
   const stored = Taro.getStorageSync('questions')
-  if (Array.isArray(stored) && stored.length) return stored
-  return questionsData
+  if (Array.isArray(stored) && stored.length) return normalizeQuestions(stored)
+  return getFallbackQuestions()
 }
 
 const allQuestions = ref(loadQuestions())

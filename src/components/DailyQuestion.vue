@@ -9,8 +9,10 @@
 <script setup>
 import { ref } from 'vue';
 import Taro from '@tarojs/taro';
+import { getFallbackQuestions } from '../services/questionBank';
 
-const questionsData = ref(Taro.getStorageSync('questions') || []);
+const storedQuestions = Taro.getStorageSync('questions');
+const questionsData = ref(Array.isArray(storedQuestions) && storedQuestions.length ? storedQuestions : getFallbackQuestions());
 const getDailyQuestion = () => {
     // 获取今天的日期标识
     const today = new Date().toISOString().split('T')[0];
@@ -19,6 +21,7 @@ const getDailyQuestion = () => {
         return cachedQuestion;  // 如果缓存中存在今日题目，则直接返回
     } else {
         // 随机生成一个题目
+        if (!questionsData.value.length) return { id: '', question: '暂无每日题目' };
         const randomIndex = Math.floor(Math.random() * questionsData.value.length);
         const dailyQuestion = questionsData.value[randomIndex];
         
@@ -31,6 +34,7 @@ const getDailyQuestion = () => {
 const dailyQuestion = getDailyQuestion();
 
 const goDetail = () => {
+    if (!dailyQuestion.id) return;
     // 跳转到每日一题详情页面
     Taro.navigateTo({
         url: `/pages/normalQuestionDetail/index?id=${dailyQuestion.id}`
