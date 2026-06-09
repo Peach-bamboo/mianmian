@@ -1,24 +1,15 @@
 import Taro from '@tarojs/taro'
 import { callCloudFunction } from './cloud'
 import { getFallbackQuestions } from './questionBank'
+import questionBankCore from '../domain/questionBankCore.cjs'
+
+const { mergeQuestionStates } = questionBankCore
 
 export function loadLocalQuestions() {
   return getFallbackQuestions()
 }
 
-export function mergeQuestionStates(questions, states = []) {
-  const stateMap = new Map(states.map(item => [String(item.questionId), item]))
-  return questions.map((question) => {
-    const state = stateMap.get(String(question.id))
-    if (!state) return question
-
-    return {
-      ...question,
-      isFavorited: state.isFavorited,
-      mastery: state.mastery || ''
-    }
-  })
-}
+export { mergeQuestionStates }
 
 export async function syncCloudQuestionStates() {
   const questions = loadLocalQuestions()

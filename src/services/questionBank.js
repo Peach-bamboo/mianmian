@@ -1,6 +1,14 @@
 import Taro from '@tarojs/taro'
 import fallbackQuestions from '../data/questions.json'
 import { callCloudFunction } from './cloud'
+import questionBankCore from '../domain/questionBankCore.cjs'
+
+const {
+  mergeStoredQuestionState,
+  normalizeId,
+  normalizeQuestion: normalizeQuestionCore,
+  normalizeQuestions: normalizeQuestionsCore
+} = questionBankCore
 
 const CACHE_KEYS = {
   meta: 'question_bank_meta',
@@ -41,49 +49,12 @@ function safeSetStorage(key, value) {
   }
 }
 
-function normalizeId(value) {
-  if (value === undefined || value === null) return ''
-  return String(value)
-}
-
 function normalizeQuestion(raw = {}) {
-  const categoryId = raw.categoryId || raw.category || ''
-  const categoryMeta = CATEGORY_LOOKUP.get(categoryId) || {}
-  const id = normalizeId(raw.id || raw._id)
-  const title = raw.title || raw.question || ''
-  const answerMarkdown = raw.answerMarkdown || raw.markdown || ''
-
-  return {
-    ...raw,
-    id,
-    _id: raw._id || id,
-    title,
-    question: title,
-    categoryId,
-    category: categoryId,
-    categoryName: raw.categoryName || categoryMeta.name || categoryId || '题库',
-    difficulty: raw.difficulty || 'medium',
-    tags: Array.isArray(raw.tags) ? raw.tags : [],
-    summary: raw.summary || '',
-    answer: raw.answer || answerMarkdown,
-    answerMarkdown,
-    diagramType: raw.diagramType || '',
-    assets: Array.isArray(raw.assets) ? raw.assets : [],
-    isFavorited: Boolean(raw.isFavorited),
-    mastery: raw.mastery || ''
-  }
+  return normalizeQuestionCore(raw, CATEGORY_LOOKUP)
 }
 
 export function normalizeQuestions(questions = []) {
-  return questions.map(normalizeQuestion).filter(item => item.id && item.question)
-}
-
-function mergeStoredQuestionState(question, storedQuestion = {}) {
-  return {
-    ...question,
-    isFavorited: Boolean(storedQuestion.isFavorited),
-    mastery: storedQuestion.mastery || ''
-  }
+  return normalizeQuestionsCore(questions, CATEGORY_LOOKUP)
 }
 
 export function getFallbackQuestions() {

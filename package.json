@@ -33,6 +33,8 @@
     "mp:page-check": "node scripts/mp-page-check.cjs",
     "question-bank:seed": "node scripts/build-question-bank-seed.cjs",
     "question-bank:validate": "node scripts/validate-question-bank.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "portfolio:verify": "pnpm test && pnpm question-bank:validate && pnpm build:weapp",
     "check:weapp": "pnpm build:weapp && pnpm mp:preview",
     "check:weapp:page": "pnpm build:weapp && pnpm mp:page-check"
   },
