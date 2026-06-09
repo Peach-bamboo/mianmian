@@ -3,6 +3,22 @@
 
 这是一个基于 Taro 和 Vue3 构建的小程序，提供了前端面试题的展示、收藏功能，并包含每日一题和随机练习的功能模块。  
 
+## AI 工程作品证据
+
+本项目同时记录了 AI 辅助架构设计、Bug 根因分析、测试生成和自动验收过程：
+
+- [作品证据首页](docs/portfolio/README.md)
+- [题库云化架构案例](docs/portfolio/architecture-case-study.md)
+- [旧缓存覆盖 Markdown 根因复盘](docs/portfolio/root-cause-analysis.md)
+- [AI 辅助测试策略](docs/portfolio/testing-strategy.md)
+- [5 分钟面试演示脚本](docs/portfolio/interview-demo.md)
+
+一键运行作品验证：
+
+```bash
+pnpm portfolio:verify
+```
+
 ## 功能说明
 - **题库展示**：按分类显示前端各类面试题目，包括 HTML、CSS、JavaScript、Vue、React、小程序等模块。
 - **每日一题**：每天自动刷新一道随机题目，方便日常学习和巩固。

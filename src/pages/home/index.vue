@@ -29,8 +29,8 @@ import Taro from '@tarojs/taro';
 import { Star } from '@nutui/icons-vue-taro'
 import Tabbar from '../../components/Tabbar.vue';
 import KnowledgeCosmos from '../../components/KnowledgeCosmos.vue';
-import questionsData from '../../data/questions.json';
 import { syncCloudQuestionStates } from '../../services/questionState';
+import { getBundledQuestions, saveQuestionsToLegacyStorage } from '../../services/questionBank';
 
 const activeTab = ref(0);
 function updateActiveTab(newValue) {
@@ -81,12 +81,17 @@ function initializeQuestionsData() {
         const existingVersion = Taro.getStorageSync('questions_version');
         if (existingVersion !== QUESTIONS_VERSION || !existingData.length) {
             // 合并收藏状态
-            const updatedQuestions = questionsData.map(newQuestion => {
-                const oldQuestion = existingData.find(item => item.id === newQuestion.id);
-                let my = oldQuestion ? { ...newQuestion, isFavorited: oldQuestion.isFavorited } : newQuestion;
-                return oldQuestion ? { ...newQuestion, isFavorited: oldQuestion.isFavorited } : newQuestion;
+            const updatedQuestions = getBundledQuestions().map(newQuestion => {
+                const oldQuestion = existingData.find(item => String(item.id) === String(newQuestion.id));
+                return oldQuestion
+                    ? {
+                        ...newQuestion,
+                        isFavorited: oldQuestion.isFavorited,
+                        mastery: oldQuestion.mastery || ''
+                    }
+                    : newQuestion;
             });
-            Taro.setStorageSync('questions', updatedQuestions);
+            saveQuestionsToLegacyStorage(updatedQuestions);
             Taro.setStorageSync('questions_version', QUESTIONS_VERSION);
             console.log("题库数据已更新至版本:", QUESTIONS_VERSION);
         } else {

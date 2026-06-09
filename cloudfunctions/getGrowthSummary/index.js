@@ -91,7 +91,7 @@ exports.main = async (event) => {
   const weeklySolved = new Set(
     (weeklyPracticeResult.data || [])
       .map(item => item.questionId)
-      .filter(questionId => Number.isFinite(Number(questionId)))
+      .filter(Boolean)
   ).size
   const dailyRecord = dailyResult.data?.[0] || null
   const dailyPracticeRecords = dailyPracticeResult.data || []

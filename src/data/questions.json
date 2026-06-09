@@ -4,6 +4,10 @@
         "category": "js",
         "question": "如何实现深拷⻉和浅拷⻉？",
         "answer": "浅拷⻉只复制对象的第⼀层属性，如果属性值是引⽤类型，浅拷⻉将复制引⽤⽽不是实际对象。深拷⻉复制对象的所有层，创建所有层次的副本。实现⽅法：•浅拷⻉可以使⽤Object.assign()或展开运算符...。constobj1={a:1,b:{c:2}};constshallowCopy={...obj1};•深拷⻉可以使⽤JSON.parse(JSON.stringify(object))，但这种⽅法不能复制函数、undefined、和循环引⽤。constdeepCopy=JSON.parse(JSON.stringify(obj1));更复杂的深拷⻉可以使⽤库如lodash的_.cloneDeep()⽅法来实现。",
+        "summary": "区分复制第一层引用和递归复制完整对象，是对象处理和面试手写题的基础。",
+        "difficulty": "medium",
+        "tags": ["对象", "深拷贝", "浅拷贝", "递归"],
+        "answerMarkdown": "## 核心结论\n\n浅拷贝只复制对象第一层。遇到对象、数组这类引用类型时，复制的是引用地址。深拷贝会递归复制每一层数据，让新对象和原对象互不影响。\n\n## 原理解释\n\n- 浅拷贝适合对象层级很浅，或者内部引用不需要隔离的场景。\n- 深拷贝适合表单快照、状态备份、复杂配置复制等场景。\n- `JSON.parse(JSON.stringify(obj))` 能处理普通对象，但会丢失函数、`undefined`、`Symbol`、`Date` 类型，也不能处理循环引用。\n\n## 代码示例\n\n```js\nconst source = { name: 'mianmian', meta: { level: 1 } }\nconst shallow = { ...source }\n\nshallow.meta.level = 2\nconsole.log(source.meta.level) // 2，内部对象仍然共享引用\n```\n\n## 简单深拷贝实现\n\n```js\nfunction deepClone(value, cache = new WeakMap()) {\n  if (value === null || typeof value !== 'object') return value\n  if (cache.has(value)) return cache.get(value)\n\n  const result = Array.isArray(value) ? [] : {}\n  cache.set(value, result)\n\n  Reflect.ownKeys(value).forEach((key) => {\n    result[key] = deepClone(value[key], cache)\n  })\n\n  return result\n}\n```\n\n## 面试回答\n\n浅拷贝只复制第一层属性，引用类型还是共享同一个地址；深拷贝会递归复制每一层引用数据。实际开发里普通浅拷贝可以用展开运算符或 `Object.assign`，深拷贝要注意函数、日期、循环引用等边界。",
         "isFavorited": false
     },
     {
@@ -11,6 +15,10 @@
         "category": "js",
         "question": "事件冒泡和事件捕获有什么区别？",
         "answer": "事件冒泡和事件捕获是DOM事件传播的两个阶段•事件捕获：事件从DOM树的根节点开始，向下传递到⽬标元素的过程中触发•事件冒泡：事件从⽬标元素向上冒泡到DOM树的根节点的过程中触发。在实际应⽤中，你可以选择在哪个阶段监听事件：element.addEventListener('click',function(event){console.log('Clicked!');},false);//使⽤false作为第三个参数，表⽰在冒泡阶段触发如果将第三个参数设置为true，则监听器将在捕获阶段触发。",
+        "summary": "事件传播分为捕获、目标、冒泡三个阶段，理解它有助于处理事件代理和阻止传播。",
+        "difficulty": "easy",
+        "tags": ["DOM", "事件流", "事件冒泡", "事件捕获"],
+        "answerMarkdown": "## 核心结论\n\n事件捕获是从外层祖先节点向目标元素传播，事件冒泡是从目标元素向外层祖先节点传播。默认情况下，`addEventListener` 的第三个参数为 `false`，监听的是冒泡阶段。\n\n## 执行阶段\n\n| 阶段 | 方向 | 说明 |\n| --- | --- | --- |\n| 捕获 | window 到目标元素 | 从外向内寻找目标 |\n| 目标 | 目标元素自身 | 触发目标元素监听器 |\n| 冒泡 | 目标元素到 window | 从内向外继续传播 |\n\n## 代码示例\n\n```js\nparent.addEventListener('click', () => {\n  console.log('parent capture')\n}, true)\n\nchild.addEventListener('click', () => {\n  console.log('child')\n})\n\nparent.addEventListener('click', () => {\n  console.log('parent bubble')\n})\n```\n\n## 常见用法\n\n- 事件代理通常依赖冒泡，把监听器挂在父元素上。\n- `event.stopPropagation()` 可以阻止事件继续传播。\n- 捕获阶段适合在事件到达目标前提前处理。\n\n## 面试回答\n\n我会先说明事件传播顺序：捕获、目标、冒泡。捕获从外到内，冒泡从内到外。实际开发中最常见的是利用冒泡做事件代理，比如列表项很多时只在父容器绑定一次点击事件。",
         "isFavorited": false
     },
     {
@@ -18,6 +26,10 @@
         "category": "css",
         "question": "css有哪些选择器，标签选择器和子选择器的区别",
         "answer": "1.基础选择器标签选择器类选择器ID选择器通用选择器2.组合选择器后代选择器（空格）子选择器（>）相邻兄弟选择器（+）通用兄弟选择器（~）3.伪类选择器:hover:first-child:last-child:nth-child(n):not(selector)4.伪元素选择器::before::after5.属性选择器[type=\"text\"]选中属性type值为text的元素。[name^=\"prefix\"]选中属性name以prefix开头的元素。[name$=\"suffix\"]选中属性name以suffix结尾的元素。[name*=\"part\"]选中属性name中包含part的元素。6.属性选择器（多个条件）input[type=\"text\"][name=\"username\"]区别总结●标签选择器：选中所有该标签的元素。●子选择器：选中指定元素的直接子元素。",
+        "summary": "CSS 选择器可以按基础、组合、伪类、伪元素和属性选择器来分类。",
+        "difficulty": "easy",
+        "tags": ["选择器", "CSS 基础", "子选择器", "后代选择器"],
+        "answerMarkdown": "## 核心结论\n\nCSS 选择器用于匹配页面元素，常见类型包括基础选择器、组合选择器、伪类选择器、伪元素选择器和属性选择器。标签选择器匹配所有指定标签，子选择器只匹配某个父元素的直接子元素。\n\n## 选择器分类\n\n| 类型 | 示例 | 说明 |\n| --- | --- | --- |\n| 标签选择器 | `div` | 匹配所有 div |\n| 类选择器 | `.card` | 匹配 class 为 card 的元素 |\n| ID 选择器 | `#app` | 匹配指定 id |\n| 后代选择器 | `.box span` | 匹配所有后代 span |\n| 子选择器 | `.box > span` | 只匹配直接子元素 span |\n| 属性选择器 | `input[type=\"text\"]` | 匹配指定属性 |\n\n## 子选择器和后代选择器区别\n\n```css\n/* 所有后代 span 都会命中 */\n.card span {}\n\n/* 只有直接子级 span 会命中 */\n.card > span {}\n```\n\n## 面试回答\n\n我会按类型回答：基础选择器有标签、类、ID、通配符；组合选择器有后代、子、相邻兄弟、通用兄弟；还有伪类、伪元素和属性选择器。标签选择器范围更广，子选择器强调直接父子关系。",
         "isFavorited": false
     }, 
     {
@@ -25,6 +37,10 @@
         "category": "vue",
         "question": "vue的diff算法了解吗，介绍一下",
         "answer": "Vue的diff算法其实就是为了让Vue在数据更新时尽量减少对DOM的操作，从而提高性能。它的核心思路是这样的：1.虚拟DOM：Vue会先把HTML模板转成一个虚拟的DOM树，然后用这个虚拟的DOM来代替真实的DOM进行操作。2.数据变化时的更新：当数据发生变化，Vue会重新生成一个新的虚拟DOM，通过递归算法，Vue会逐个比较新旧虚拟节点的属性、子节点、文本内容等，找出两者之间的差异。3.最小化DOM操作：Vue只会对比差异部分，更新需要改动的DOM，避免不必要的全部重新渲染。4.优化点：○key：特别是列表渲染时，key会帮助Vue更聪明地复用DOM元素，避免重新创建。○静态内容缓存：不会每次都渲染不变的内容，减少性能消耗。简而言之，Vue通过这种方式，做到在页面更新时尽量只做最小的更新，保持渲染的高效。",
+        "summary": "Vue diff 通过比较新旧虚拟 DOM，尽量复用节点并减少真实 DOM 操作。",
+        "difficulty": "hard",
+        "tags": ["Vue", "Diff", "虚拟 DOM", "key"],
+        "answerMarkdown": "## 核心结论\n\nVue 的 diff 算法用于比较新旧虚拟 DOM，找出最小更新范围，再把变化同步到真实 DOM。它的目标不是完全不操作 DOM，而是尽量减少不必要的 DOM 创建、删除和移动。\n\n## 原理解释\n\n- 数据变化后会生成新的虚拟 DOM。\n- Vue 会比较新旧 vnode。\n- 相同类型的节点会尽量复用。\n- 列表节点依赖 `key` 判断身份。\n- 静态节点和静态树可以跳过重复比较。\n\n## 列表为什么需要 key\n\n```vue\n<li v-for=\"item in list\" :key=\"item.id\">\n  {{ item.name }}\n</li>\n```\n\n`key` 能帮助 Vue 判断哪个节点是同一个节点。没有稳定 key 时，列表重排可能导致错误复用，也会影响性能。\n\n## 常见坑\n\n- 不建议使用数组下标作为 key，尤其是列表会增删或排序时。\n- diff 不是直接比较真实 DOM，而是比较虚拟 DOM。\n- Vue3 编译阶段还有 patch flag、静态提升等优化。\n\n## 面试回答\n\nVue diff 的核心是比较新旧虚拟 DOM，能复用就复用，只更新必要变化。列表场景下 key 很重要，因为它决定节点身份。Vue3 还会通过编译优化标记动态节点，减少运行时比较成本。",
         "isFavorited": false
     },
     {
@@ -32,6 +48,10 @@
         "category": "js",
         "question": "JavaScript中的原型继承是如何⼯作的？",
         "answer": "JavaScript是基于原型的语⾔，意味着对象可以从另⼀个对象继承属性。每个对象都有⼀个原型对象，它从中继承⽅法和属性。原型继承的核⼼是prototype属性。当你访问⼀个对象的属性或⽅法时，如果当前对象上不存在，解释器就会查找对象的原型链，直到找到该属性或⽅法或到达原型链的末端。例如，你可以为JavaScript的Array对象添加新的⽅法：Array.prototype.myCustomFeature=function(){//implementation};所有的数组都将⾃动获得这个新⽅法，因为它们从Array.prototype继承。Object.prototype是原型链的顶端，它没有原型，因此Object.prototype的[[Prototype]]是null。",
+        "summary": "原型链决定对象属性查找路径，是理解继承、构造函数和 class 的基础。",
+        "difficulty": "medium",
+        "tags": ["原型", "继承", "prototype", "__proto__"],
+        "answerMarkdown": "## 核心结论\n\nJavaScript 对象可以通过原型对象继承属性和方法。当访问一个属性时，如果对象自身没有，JS 会沿着原型链继续向上查找，直到找到属性或到达 `null`。\n\n## 原型关系\n\n```js\nfunction Person(name) {\n  this.name = name\n}\n\nPerson.prototype.sayHi = function () {\n  return `Hi, ${this.name}`\n}\n\nconst p = new Person('mianmian')\nconsole.log(p.sayHi())\n```\n\n这里 `p` 自身没有 `sayHi`，但它可以通过原型链访问 `Person.prototype.sayHi`。\n\n## prototype 和 __proto__\n\n| 名称 | 作用 |\n| --- | --- |\n| `prototype` | 函数特有，作为实例的原型对象 |\n| `__proto__` | 对象上的隐式原型，指向创建它的构造函数的 prototype |\n| `Object.getPrototypeOf` | 推荐使用的读取原型方式 |\n\n## 面试回答\n\nJS 是基于原型的语言。对象访问属性时会先找自身，没有就沿着隐式原型继续找。构造函数的 `prototype` 会成为实例的原型，所以实例能共享原型上的方法。原型链最终会到 `Object.prototype`，再往上是 `null`。",
         "isFavorited": false
     },
     {

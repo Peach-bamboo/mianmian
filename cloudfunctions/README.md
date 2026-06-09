@@ -212,6 +212,79 @@ cloudbase-6gdlm2mh02471f6b
 }
 ```
 
+### getQuestionBank
+
+作用：
+
+- 为小程序提供云端题库读取能力
+- 支持分类、列表、详情和题库元信息
+
+上线前需要先创建并导入题库集合：
+
+```txt
+.private/question-bank-seed/question_categories.import.json -> question_categories
+.private/question-bank-seed/questions.import.json -> questions
+```
+
+本地生成和校验命令：
+
+```sh
+pnpm question-bank:seed
+pnpm question-bank:validate
+```
+
+部署 `getQuestionBank` 后，也要同步部署已经兼容字符串题目 ID 的用户状态相关云函数：
+
+```txt
+toggleFavorite
+updateMastery
+addPracticeRecord
+getDailyQuestion
+getGrowthSummary
+```
+- 只返回 `published` 状态的数据
+- 小程序端云函数失败时会自动回退到本地题库
+
+请求参数：
+
+```js
+{
+  action: 'list',
+  categoryId: 'js',
+  page: 1,
+  pageSize: 20
+}
+```
+
+支持的 action：
+
+- `categories`：获取已发布分类
+- `list`：获取题目列表，不返回完整答案
+- `detail`：获取题目详情和 Markdown 答案
+- `meta`：获取题库版本、题目数和更新时间
+
+云端集合：
+
+- `question_categories`
+- `questions`
+- `question_assets`
+- `question_versions`（预留给后台版本历史）
+
+本地题库迁移到云端前，可以先生成导入种子数据：
+
+```sh
+pnpm question-bank:seed
+```
+
+脚本会输出：
+
+```txt
+.private/question-bank-seed/question_categories.import.json
+.private/question-bank-seed/questions.import.json
+```
+
+这两个文件后缀是 `.json`，内容是 JSON Lines，可分别导入微信云开发数据库的 `question_categories` 和 `questions` 集合。
+
 返回示例：
 
 ```js

@@ -18,8 +18,8 @@ function getChinaDateText(date) {
 function normalizeQuestionIds(value) {
   if (!Array.isArray(value)) return []
   return value
-    .map(id => Number(id))
-    .filter(id => Number.isFinite(id))
+    .map(id => String(id || '').trim())
+    .filter(Boolean)
 }
 
 function pickQuestionId(questionIds, openid, dateText) {

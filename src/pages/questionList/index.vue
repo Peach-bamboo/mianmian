@@ -65,6 +65,9 @@
             <text class="arrow">›</text>
           </view>
         </view>
+        <view v-if="hasMore && !searchText && activeFilter === 'all'" class="load-more">
+          <text>{{ isLoading ? '加载中...' : '上滑加载更多' }}</text>
+        </view>
       </view>
 
       <view v-else class="empty-state">
@@ -77,14 +80,20 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useDidShow, useReachBottom, useRouter } from '@tarojs/taro'
 import CosmosHeadbar from '../../components/CosmosHeadbar.vue'
-import questionsData from '../../data/questions.json'
+import { getQuestionList, refreshQuestionBankMeta, saveQuestionsToLegacyStorage } from '../../services/questionBank'
 
 const router = useRouter()
 const categoryKey = ref(router.params.key || '')
 const searchText = ref('')
 const activeFilter = ref('all')
+const sourceQuestions = ref([])
+const loadingText = ref('')
+const page = ref(1)
+const pageSize = 50
+const hasMore = ref(false)
+const isLoading = ref(false)
 
 const CATEGORY_TITLE_MAP = {
   html: 'HTML 题目',
@@ -107,38 +116,11 @@ const filters = [
   { key: 'fav', name: '已收藏' }
 ]
 
-function loadQuestions() {
-  const data = Taro.getStorageSync('questions')
-  return Array.isArray(data) && data.length ? data : questionsData
-}
-
-function getRandomQuestions(allQuestions, count = 10) {
-  const selected = []
-  const used = new Set()
-  while (selected.length < count && used.size < allQuestions.length) {
-    const randomIndex = Math.floor(Math.random() * allQuestions.length)
-    const item = allQuestions[randomIndex]
-    if (!used.has(item.id)) {
-      used.add(item.id)
-      selected.push(item)
-    }
-  }
-  return selected
-}
-
-const allQuestions = ref(loadQuestions())
-
-const sourceQuestions = computed(() => {
-  if (categoryKey.value === 'random') {
-    return getRandomQuestions(allQuestions.value, 10)
-  }
-  return allQuestions.value.filter(question => question.category === categoryKey.value)
-})
-
 const filteredQuestions = computed(() => {
   const keyword = searchText.value.trim().toLowerCase()
   return sourceQuestions.value.filter((question) => {
-    const byKeyword = !keyword || question.question.toLowerCase().includes(keyword)
+    const searchTarget = `${question.question} ${question.summary || ''} ${(question.tags || []).join(' ')}`.toLowerCase()
+    const byKeyword = !keyword || searchTarget.includes(keyword)
     let byState = true
     if (activeFilter.value === 'new') byState = !question.mastery
     if (activeFilter.value === 'mastered') byState = question.mastery === 'mastered'
@@ -156,15 +138,72 @@ const pageSubtitle = computed(() => {
 })
 
 function goToDetailPage(id, index) {
-  const ids = filteredQuestions.value.map(item => item.id).join(',')
+  Taro.setStorageSync('question_pool', filteredQuestions.value)
   Taro.navigateTo({
-    url: `/pages/normalQuestionDetail/index?id=${id}&key=${categoryKey.value || ''}&index=${index}&ids=${ids}`
+    url: `/pages/normalQuestionDetail/index?id=${id}&key=${categoryKey.value || ''}&index=${index}`
   })
+}
+
+async function loadPageQuestions(options = {}) {
+  if (isLoading.value) return
+  isLoading.value = true
+  loadingText.value = '加载题库中...'
+  try {
+    await refreshQuestionBankMeta()
+    const nextPage = options.append ? page.value + 1 : 1
+    const result = await getQuestionList({
+      categoryId: categoryKey.value,
+      page: nextPage,
+      pageSize,
+      randomCount: 10
+    }, options)
+    const nextList = result.list || []
+    sourceQuestions.value = options.append
+      ? dedupeQuestions([...sourceQuestions.value, ...nextList])
+      : nextList
+    page.value = result.page || nextPage
+    hasMore.value = Boolean(result.hasMore)
+    saveQuestionsToLegacyStorage(mergeIntoLegacyQuestions(sourceQuestions.value))
+  } catch (error) {
+    Taro.showToast({ title: '题库加载失败', icon: 'none' })
+  } finally {
+    loadingText.value = ''
+    isLoading.value = false
+  }
+}
+
+function dedupeQuestions(list) {
+  const map = new Map()
+  list.forEach(item => map.set(String(item.id), item))
+  return Array.from(map.values())
+}
+
+function mergeIntoLegacyQuestions(list) {
+  const stored = Taro.getStorageSync('questions')
+  const existing = Array.isArray(stored) ? stored : []
+  const nextMap = new Map(existing.map(item => [String(item.id), item]))
+  list.forEach((item) => {
+    nextMap.set(String(item.id), {
+      ...(nextMap.get(String(item.id)) || {}),
+      ...item
+    })
+  })
+  return Array.from(nextMap.values())
 }
 
 function goBack() {
   Taro.navigateBack({ delta: 1 })
 }
+
+useDidShow(() => {
+  loadPageQuestions({ refresh: true })
+})
+
+useReachBottom(() => {
+  if (categoryKey.value === 'random') return
+  if (!hasMore.value || searchText.value || activeFilter.value !== 'all') return
+  loadPageQuestions({ append: true })
+})
 </script>
 
 <style lang="scss">
@@ -263,6 +302,17 @@ function goBack() {
 
 .question-list {
   margin-top: fig(8);
+}
+
+.load-more {
+  height: fig(38);
+  text-align: center;
+}
+
+.load-more text {
+  color: #7e90b6;
+  font-size: fig(12);
+  line-height: fig(38);
 }
 
 .question-card {

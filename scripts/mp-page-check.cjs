@@ -1,6 +1,5 @@
 const fs = require('fs')
 const path = require('path')
-const childProcess = require('child_process')
 const automator = require('miniprogram-automator')
 const { PNG } = require('pngjs')
 
@@ -11,6 +10,10 @@ const screenshotPath = process.env.MP_SCREENSHOT_OUTPUT || path.join(projectPath
 const timeout = Number(process.env.MP_AUTOMATOR_TIMEOUT || 60000)
 const port = Number(process.env.MP_AUTOMATOR_PORT || 9420)
 const waitMs = Number(process.env.MP_PAGE_WAIT || 3000)
+const tapSelector = process.env.MP_TAP_SELECTOR || ''
+const afterTapWaitMs = Number(process.env.MP_AFTER_TAP_WAIT || 1500)
+const expectSelector = process.env.MP_EXPECT_SELECTOR || ''
+const expectText = process.env.MP_EXPECT_TEXT || ''
 const minNonWhiteRatio = Number(process.env.MP_MIN_NON_WHITE_RATIO || 0.01)
 
 if (!fs.existsSync(cliPath)) {
@@ -39,6 +42,33 @@ if (!fs.existsSync(cliPath)) {
     }
 
     await page.waitFor(waitMs)
+
+    if (tapSelector) {
+      const target = await page.$(tapSelector)
+      if (!target) {
+        throw new Error(`Tap target not found: ${tapSelector}`)
+      }
+      await target.tap()
+      await page.waitFor(afterTapWaitMs)
+    }
+
+    if (expectSelector) {
+      const expectedElement = await page.$(expectSelector)
+      if (!expectedElement) {
+        throw new Error(`Expected element not found: ${expectSelector}`)
+      }
+
+      if (expectText) {
+        const actualText = await expectedElement.text()
+        if (!actualText.includes(expectText)) {
+          throw new Error(`Expected text "${expectText}" in ${expectSelector}, got "${actualText}"`)
+        }
+        console.log(`Expected text found: ${expectText}`)
+      } else {
+        console.log(`Expected element found: ${expectSelector}`)
+      }
+    }
+
     await miniProgram.screenshot({ path: screenshotPath })
 
     const result = analyzeScreenshot(screenshotPath, minNonWhiteRatio)
@@ -77,38 +107,13 @@ function normalizePagePath(value) {
 }
 
 async function launchDevTools() {
-  const child = childProcess.spawn(cliPath, [
-    'auto',
-    '--project',
+  return automator.launch({
+    cliPath,
     projectPath,
-    '--port',
-    String(port),
-    '--trust-project',
-  ], {
-    detached: true,
-    stdio: 'ignore',
+    port,
+    timeout,
+    trustProject: true,
   })
-
-  child.unref()
-
-  const startedAt = Date.now()
-  const wsEndpoint = `ws://127.0.0.1:${port}`
-  let lastError
-
-  while (Date.now() - startedAt < timeout) {
-    try {
-      return await automator.connect({ wsEndpoint })
-    } catch (error) {
-      lastError = error
-      await sleep(1000)
-    }
-  }
-
-  throw lastError || new Error(`Failed connecting to ${wsEndpoint}`)
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function analyzeScreenshot(filePath, threshold) {

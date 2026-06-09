@@ -68,8 +68,8 @@
 import { computed, ref } from 'vue'
 import Taro, { useDidShow } from '@tarojs/taro'
 import CosmosHeadbar from '../../components/CosmosHeadbar.vue'
-import questionsData from '../../data/questions.json'
 import { syncCloudQuestionStates, toggleFavoriteByCloud } from '../../services/questionState'
+import { getFallbackQuestions, normalizeQuestions, saveQuestionsToLegacyStorage } from '../../services/questionBank'
 
 const searchText = ref('')
 const activeFilter = ref('all')
@@ -128,13 +128,13 @@ const filteredQuestions = computed(() => {
 
 function loadQuestions() {
   const stored = Taro.getStorageSync('questions')
-  if (Array.isArray(stored) && stored.length) return stored
-  return questionsData
+  if (Array.isArray(stored) && stored.length) return normalizeQuestions(stored)
+  return getFallbackQuestions()
 }
 
 function syncQuestions(next) {
   allQuestions.value = next
-  Taro.setStorageSync('questions', next)
+  saveQuestionsToLegacyStorage(next)
 }
 
 async function toggleFavorite(id) {
